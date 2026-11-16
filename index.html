@@ -1,4 +1,4 @@
-<title>Top Bins</title>
+<title>Panenka</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Martian+Mono:wght@400;600&display=swap">
@@ -329,7 +329,7 @@ details.ans[open] .why, details.ans[open] .alist { animation: drop .35s ease bot
         <polygon points="20,12 27,17 24.5,25 15.5,25 13,17" fill="#0c2a1e"/>
         <path d="M20 12V3M27 17l8-3M24.5 25l5 7M15.5 25l-5 7M13 17l-8-3" stroke="#0c2a1e" stroke-width="2" fill="none"/>
       </svg>
-      <div><div class="brand-name">Top <span>Bins</span></div><div class="brand-sub" id="meta">Daily football quiz</div></div>
+      <div><div class="brand-name">Panen<span>ka</span></div><div class="brand-sub" id="meta">Daily football quiz</div></div>
     </div>
     <div class="pips" id="pips" aria-label="Progress through today's seven questions"></div>
     <div class="streak" id="streak">
@@ -500,16 +500,15 @@ BANK.forEach((Q, i) => { Q.topic = TOPICS[i] || "Football"; });
 
 // ================= Rarity tiers (Krillion-style points: 10 / 15 / 30 / 60 / 85 / 100) =================
 const TIERS = [
- { id: "top",    name: "Top Bins",          pts: 100, color: "#ffc53d", emoji: "🎯", th: "rarest only", line: "The single rarest answer on the board. Picked out the top corner." },
+ { id: "top",    name: "Panenka",           pts: 100, color: "#ffc53d", emoji: "🎯", th: "rarest only", line: "The single rarest answer on the board. Chipped down the middle while the keeper dived." },
  { id: "bottom", name: "Bottom Corner",     below: .5,  pts: 85, color: "#7ee08a", emoji: "⚽", th: "< 0.5%", line: "A deep cut. Low, hard and inside the post." },
  { id: "finger", name: "Fingertip Save",    below: 2,   pts: 60, color: "#6fc3ff", emoji: "🧤", th: "< 2%", line: "A proper strike. The keeper only just got a glove to it." },
  { id: "tame",   name: "Tame Effort",       below: 6,   pts: 30, color: "#efe8cf", emoji: "🟨", th: "< 6%", line: "On target, but the keeper read it all the way." },
- { id: "scuff",  name: "Scuffed It",        below: 15,  pts: 15, color: "#d39a5b", emoji: "🟧", th: "< 15%", line: "A popular pick. It trickled into the keeper's arms." },
- { id: "ground", name: "Kicked the Ground", below: 1e9, pts: 10, color: "#a07a52", emoji: "🟫", th: "15%+", line: "The answer everyone blurts out. The divot went further than the ball." }
+ { id: "scuff",  name: "Scuffed It",        below: 1e9, pts: 15, color: "#d39a5b", emoji: "🟧", th: "6%+", line: "The answer everyone blurts out. It trickled into the keeper's arms." }
 ];
 const ROWZ = { id: "rowz", name: "Row Z", pts: 0, color: "#ff7a6b", emoji: "❌", th: "no answer", line: "No answer on the board. That one's in the car park." };
 const ALL_TIERS = [...TIERS, ROWZ];
-const tierById = id => ALL_TIERS.find(t => t.id === id);
+const tierById = id => ALL_TIERS.find(t => t.id === (id === "ground" ? "scuff" : id));
 const MAXPTS = 700, TIME = 20, RING = 119.4;
 const ROARS = [[600, "Bedlam"], [450, "Bouncing"], [300, "Rocking"], [150, "Warming up"], [0, "Quiet"]];
 const roarWord = p => ROARS.find(r => p >= r[0])[1];
@@ -596,14 +595,14 @@ function rankInfo(total) {
 const BADGES = [
  { id: "debut", name: "Debut", how: "finish your first daily" },
  { id: "goal", name: "Off the mark", how: "score your first goal" },
- { id: "top", name: "Top Bins", how: "find a Top Bins answer" },
+ { id: "top", name: "Panenka", how: "find a Panenka answer" },
  { id: "hat", name: "Hat-trick", how: "score 3 goals in one day" },
- { id: "clean", name: "No divots", how: "answer all 7 without Kicking the Ground" },
+ { id: "clean", name: "No scuffs", how: "answer all 7 without Scuffing It" },
  { id: "c300", name: "300 club", how: "score 300 or more in a day" },
  { id: "c500", name: "500 club", how: "score 500 or more in a day" },
  { id: "s3", name: "3-day streak", how: "play 3 days in a row" },
  { id: "s7", name: "7-day streak", how: "play 7 days in a row" },
- { id: "col5", name: "Collector", how: "find 5 different Top Bins answers" }
+ { id: "col5", name: "Collector", how: "find 5 different Panenka answers" }
 ];
 function loadStats() {
   const s = store.get(STATS_KEY) || {};
@@ -621,7 +620,7 @@ function recordDaily() {
   G.answers.forEach((a, i) => { if (a.tier === "top") { const q = BANK[G.qs[i]].q; if (!st.tops.includes(q)) st.tops.push(q); } });
   const give = (id, ok) => { if (ok && !st.badges[id]) { st.badges[id] = dayNo; fresh.push(id); } };
   give("debut", true); give("goal", st.goals > 0); give("top", tiers.includes("top")); give("hat", goals >= 3);
-  give("clean", !tiers.includes("ground") && !tiers.includes("rowz")); give("c300", pts >= 300); give("c500", pts >= 500);
+  give("clean", !tiers.includes("ground") && !tiers.includes("scuff") && !tiers.includes("rowz")); give("c300", pts >= 300); give("c500", pts >= 500);
   give("s3", st.streak >= 3); give("s7", st.streak >= 7); give("col5", st.tops.length >= 5);
   store.set(STATS_KEY, st);
   return { st, fresh };
@@ -771,10 +770,10 @@ function showIntro() {
     : "Your streak ended. A new one starts with today's seven.";
   setPanel(`
     <span class="eyebrow">Daily No. ${dayNo} · ${dateLbl}</span>
-    <h1>Obvious answers <em>scuff it.</em> Rare ones go top bins.</h1>
+    <h1>Obvious answers <em>scuff it.</em> Rare ones get the Panenka.</h1>
     <p class="hook">${hook}</p>
     <div class="btn-row"><button class="btn big" id="go">Kick off</button><span class="muted">7 questions · ${TIME}s each · wrong guesses are free</span></div>
-    <p>Every question has lots of right answers. Find the one the fewest fans would think of. Only the single rarest answer on each board hits the top corner.</p>
+    <p>Every question has lots of right answers. Find the one the fewest fans would think of. Only the single rarest answer on each board earns the Panenka: a cheeky chip down the middle.</p>
     ${st.played ? careerHTML(st) : ""}
     ${ladderHTML()}`);
   $("go").onclick = () => { SFX.unlock(); SFX.whistle(1); showQuestion(); };
@@ -794,7 +793,7 @@ function showQuestion() {
     </div>
     <h2>${esc(Q.q)}</h2>
     <p class="muted">${esc(Q.note)}</p>
-    <span class="count-chip"><b>${Q.list.length}</b> right answers · <b>1</b> top bins</span>
+    <span class="count-chip"><b>${Q.list.length}</b> right answers · <b>1</b> Panenka</span>
     <form class="answer-row" id="f" autocomplete="off">
       <input id="ans" type="text" placeholder="Type your answer" aria-label="Your answer" autocapitalize="words" spellcheck="false" autocorrect="off" enterkeyhint="go">
       <button class="btn" type="submit">Shoot</button>
@@ -857,7 +856,7 @@ function shoot(hit, raw, why) {
   setTimeout(finish, 9000); // safety net if the animation can't run
 }
 
-const whyBox = Q => Q.why ? `<div class="why"><span class="why-k">Why ${esc(Q.rarest.name)} is Top Bins</span><p>${esc(Q.why)}</p></div>` : "";
+const whyBox = Q => Q.why ? `<div class="why"><span class="why-k">Why ${esc(Q.rarest.name)} is the Panenka</span><p>${esc(Q.why)}</p></div>` : "";
 function showResult(i, ans) {
   const t = tierById(ans.tier), last = i === 6, Q = BANK[G.qs[i]], isTop = ans.tier === "top";
   let meter = "";
@@ -898,12 +897,12 @@ function showFinal() {
   scene.fireworks = pts >= 300 ? pts / MAXPTS : 0;
   if (firstView || !daily) { SFX.whistle(3); if (fresh.length) SFX.chime(4); }
   const r0 = rankInfo(prevTotal), r1 = rankInfo(st.total), promoted = firstView && r0.name !== r1.name;
-  const verdict = pts >= 600 ? "Bedlam in the stands. Nobody saw those coming." : pts >= 450 ? "The away end is bouncing. Clinical finishing." : pts >= 300 ? "Decent shift. A few deep cuts in there." : pts >= 150 ? "The crowd's warming up. Dig deeper tomorrow." : "Plenty of divots today. Skip the first answer that comes to mind.";
+  const verdict = pts >= 600 ? "Bedlam in the stands. Nobody saw those coming." : pts >= 450 ? "The away end is bouncing. Clinical finishing." : pts >= 300 ? "Decent shift. A few deep cuts in there." : pts >= 150 ? "The crowd's warming up. Dig deeper tomorrow." : "Plenty of scuffs today. Skip the first answer that comes to mind.";
   // goal of the day: best tier, then rarest
   let bi = -1;
   G.answers.forEach((a, i) => { if (!a.name) return; if (bi < 0) { bi = i; return; } const p = tierById(a.tier).pts, bp = tierById(G.answers[bi].tier).pts; if (p > bp || (p === bp && a.pct < G.answers[bi].pct)) bi = i; });
   const best = bi >= 0 ? G.answers[bi] : null, bt = best ? tierById(best.tier) : null;
-  const share = `Top Bins No. ${dayNo} · ${pts}/${MAXPTS} · Crowd: ${roarWord(pts)}\n${G.answers.map(a => tierById(a.tier).emoji).join("")}${daily && st.streak > 1 ? `\n🔥 ${st.streak}-day streak` : ""}`;
+  const share = `Panenka No. ${dayNo} · ${pts}/${MAXPTS} · Crowd: ${roarWord(pts)}\n${G.answers.map(a => tierById(a.tier).emoji).join("")}${daily && st.streak > 1 ? `\n🔥 ${st.streak}-day streak` : ""}`;
   const rows = G.answers.map((a, i) => {
     const Q = BANK[G.qs[i]], t = tierById(a.tier);
     const sorted = [...Q.list].sort((x, y) => x.pct - y.pct);
@@ -922,7 +921,7 @@ function showFinal() {
   }).join("");
   const earned = BADGES.filter(b => st.badges[b.id]).length, nextB = BADGES.find(b => !st.badges[b.id]);
   const dailyBlocks = !daily ? "" : `
-    <div class="stats"><div><b>${st.streak}</b><span>Day streak</span></div><div><b>${st.best}</b><span>Best score</span></div><div><b>${st.tops.length}/${BANK.length}</b><span>Top Bins found</span></div></div>
+    <div class="stats"><div><b>${st.streak}</b><span>Day streak</span></div><div><b>${st.best}</b><span>Best score</span></div><div><b>${st.tops.length}/${BANK.length}</b><span>Panenkas found</span></div></div>
     ${careerHTML(st)}
     <div class="cabinet"><span class="k">Trophy cabinet · <b>${earned}/${BADGES.length}</b></span>
       <div class="badges">${BADGES.map(b => `<span class="badge${st.badges[b.id] ? " on" : ""}${fresh.includes(b.id) ? " new" : ""}" title="${esc(b.name)}: ${esc(b.how)}">${b.name}</span>`).join("")}</div>
@@ -1035,7 +1034,7 @@ const scene = {
   fullTime() { this.banner = { text: "FULL TIME", color: "#eef3ea", t0: clock, sub: roarWord(totalPts()).toUpperCase() }; },
   play(tier, done) {
     const k = REDUCE ? .35 : 1;
-    const flight = { ground: 520, scuff: 1500, tame: 780, finger: 560, bottom: 520, top: 620, rowz: 760 }[tier] * k;
+    const flight = { ground: 520, scuff: 1500, tame: 780, finger: 560, bottom: 520, top: 980, rowz: 760 }[tier] * k;
     const RUN = 760 * k;
     this.shot = { tier, side: Math.random() < .5 ? -1 : 1, start: clock, contact: clock + RUN, flight, end: clock + RUN + flight + 1500 * k, done, k };
     this.banner = null; this.net = null; this.trail = [];
@@ -1066,7 +1065,7 @@ function keeperState(now) {
   };
   if (t === "finger") dive(side * .74, .8, 60 * s.k, s.flight * .95);
   else if (t === "bottom") dive(side * .55, .12, 110 * s.k, s.flight * .9);
-  else if (t === "top") dive(side * .55, .6, 260 * s.k, s.flight * .85);
+  else if (t === "top") dive(side * .8, .15, 0, s.flight * .42);
   else if (t === "scuff") { const p = easeOut(clamp01((el - s.flight * .45) / (s.flight * .45))); st.crouch = p; st.pose = p > .1 ? "crouch" : "ready"; st.cy = g.gy - g.kh * .5 + p * g.kh * .12; }
   else if (t === "tame") { const p = easeOut(clamp01((el - s.flight * .3) / (s.flight * .5))); st.cx = lerp(baseX, W / 2 + side * g.gw * .05, p); st.pose = p > .2 ? "catch" : "ready"; }
   else if (t === "rowz") { st.pose = clamp01(el / (s.flight * .6)) > .3 ? "look" : "ready"; }
@@ -1104,9 +1103,9 @@ function ballState(now, kst) {
       break;
     }
     case "top": {
-      const e = easeOut(p), ex = toX(side * .9), ey = toY(.88), by = lerp(g.spotY, ey, e);
-      x = lerp(g.spotX, ex, e) - Math.sin(Math.PI * p) * side * W * .05; y = by - Math.sin(Math.PI * p) * H * .07; r = depthR(by);
-      if (p >= 1) { const d = easeInOut(after); x = ex - side * g.gw * .02 * d; y = lerp(ey - g.gh * .04, g.gy - g.gh * .1, d * d); r = g.br1 * (1 - .2 * d); behind = true; }
+      const ex = W / 2 - side * g.gw * .03, ey = toY(.42), by = lerp(g.spotY, ey, p);
+      x = lerp(g.spotX, ex, p); y = by - Math.sin(Math.PI * p) * H * .2; r = depthR(by);
+      if (p >= 1) { const d = easeInOut(after); x = ex; y = lerp(ey, g.gy - g.gh * .1, d * d); r = g.br1 * (1 - .2 * d); behind = true; }
       break;
     }
     case "rowz": { const e = easeOut(p); x = lerp(g.spotX, toX(side * .45), e); y = lerp(g.spotY, -H * .25, Math.pow(p, .85)); r = lerp(g.br0, g.br1 * .7, e); behind = y < g.gy - g.gh; break; }
@@ -1237,7 +1236,7 @@ function drawHoarding(now) {
     return;
   }
   const goal = scene.banner && scene.banner.text === "GOAL!";
-  const msg = goal ? "GOAL  ·  GOAL  ·  GOAL  ·  " : "TOP BINS  ·  DAILY FOOTBALL QUIZ  ·  RARE ANSWERS SCORE  ·  ";
+  const msg = goal ? "GOAL  ·  GOAL  ·  GOAL  ·  " : "PANENKA  ·  DAILY FOOTBALL QUIZ  ·  RARE ANSWERS SCORE  ·  ";
   ctx.font = `800 ${Math.round(h * .62)}px "Big Shoulders Display", Impact, sans-serif`;
   ctx.textBaseline = "middle"; ctx.textAlign = "left";
   const mw = ctx.measureText(msg).width || 1, off = REDUCE ? 0 : ((now / (goal ? 6 : 18)) % mw);
@@ -1361,7 +1360,7 @@ function drawStriker(now) {
   ctx.fillStyle = "#1f6b45"; ctx.fillRect(x - S * .13, shY, S * .26, S * .02);
   ctx.fillStyle = "#123a28"; ctx.font = `800 ${Math.round(S * .14)}px "Big Shoulders Display", Impact, sans-serif`;
   ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("10", x, shY + S * .15);
-  ctx.font = `700 ${Math.round(S * .045)}px "Barlow Semi Condensed", sans-serif`; ctx.fillText("BINS", x, shY + S * .055);
+  ctx.font = `700 ${Math.round(S * .045)}px "Barlow Semi Condensed", sans-serif`; ctx.fillText("PANENKA", x, shY + S * .055);
   ctx.fillStyle = "#c08a60"; ctx.fillRect(x - S * .025, shY - S * .04, S * .05, S * .05);
   ctx.fillStyle = "#1e140d"; ctx.beginPath(); ctx.arc(x, shY - S * .085, S * .065, 0, 6.3); ctx.fill();
 }
@@ -1451,9 +1450,9 @@ function edgeGlow(rgb, a) {
 let last = performance.now(), ambT = 0;
 function frame(real) {
   const dtR = Math.min(.05, Math.max(0, (real - last) / 1000)); last = real;
-  // slow motion as a Top Bins strike closes in on the corner
+  // slow motion as the Panenka chip floats over the diving keeper
   const s0 = scene.shot; let tsT = 1;
-  if (s0 && !REDUCE && s0.tier === "top") { const p = (clock - s0.contact) / s0.flight; if (p > .4 && p < 1.1) tsT = .26; }
+  if (s0 && !REDUCE && s0.tier === "top") { const p = (clock - s0.contact) / s0.flight; if (p > .5 && p < 1.02) tsT = .3; }
   scene.ts += (tsT - scene.ts) * Math.min(1, dtR * 16);
   if (!scene.frozen) clock += dtR * 1000 * scene.ts;
   const now = clock, dt = dtR * scene.ts;
@@ -1480,7 +1479,7 @@ function frame(real) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = "#05110b"; ctx.fillRect(0, 0, cw, ch);
   ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
   drawStands(now); drawBeams(real); drawHoarding(now); drawPitch();
-  drawNet(now); drawTargets(now);
+  drawNet(now);
   if (b.behind) { drawTrail(); drawBall(b); }
   drawKeeper(kst);
   drawPosts();
