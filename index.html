@@ -907,8 +907,7 @@ function showFinal() {
     <div class="cabinet"><span class="k">Trophy cabinet · <b>${earned}/${BADGES.length}</b></span>
       <div class="badges">${BADGES.map(b => `<span class="badge${st.badges[b.id] ? " on" : ""}${fresh.includes(b.id) ? " new" : ""}" title="${esc(b.name)}: ${esc(b.how)}">${b.name}</span>`).join("")}</div>
       ${nextB ? `<span class="next-badge">Next up: ${nextB.name}. To earn it, ${nextB.how}.</span>` : ""}
-    </div>
-    <div class="topics"><span class="k">Tomorrow's teamsheet · kicks off in <b id="cd">--:--:--</b></span>${chipsHTML(dailySet(dayNo + 1).slice(0, 3), "+ 4 more")}</div>`;
+    </div>`;
   setPanel(`
     <span class="eyebrow">Full time · Daily No. ${dayNo}</span>
     <div class="ft-score"><span class="big" id="ftpts">0</span><span class="of">/ ${MAXPTS} pts<br>${goals} goal${goals === 1 ? "" : "s"} · crowd ${roarWord(pts).toLowerCase()}</span></div>
