@@ -509,7 +509,7 @@ const TIERS = [
 const ROWZ = { id: "rowz", name: "Row Z", pts: 0, color: "#ff7a6b", emoji: "❌", th: "no answer", line: "No answer on the board. That one's in the car park." };
 const ALL_TIERS = [...TIERS, ROWZ];
 const tierById = id => ALL_TIERS.find(t => t.id === (id === "ground" ? "scuff" : id));
-const MAXPTS = 700, TIME = 20, RING = 119.4;
+const MAXPTS = 700, TIME = 30, RING = 119.4;
 const ROARS = [[600, "Bedlam"], [450, "Bouncing"], [300, "Rocking"], [150, "Warming up"], [0, "Quiet"]];
 const roarWord = p => ROARS.find(r => p >= r[0])[1];
 
@@ -765,7 +765,7 @@ const chipsHTML = (ids, more) => `<div class="chips">${ids.map(i => `<span class
 function showIntro() {
   renderBoard(-1); scene.reset(); scene.cam.zt = .86; scene.mode = "intro"; scene.atmoT = .45;
   const st = loadStats(), ls = liveStreak(st);
-  const hook = st.played === 0 ? "Seven questions. Twenty seconds each. One shot per question."
+  const hook = st.played === 0 ? "Seven questions. Thirty seconds each. One shot per question."
     : ls > 0 ? `Your ${ls}-day streak is on the line. Play today to make it ${ls + 1}.`
     : "Your streak ended. A new one starts with today's seven.";
   setPanel(`
