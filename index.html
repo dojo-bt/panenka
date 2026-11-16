@@ -1494,3 +1494,31 @@ else if (G.answers.length > 0 || G.cur) showQuestion();
 else showIntro();
 requestAnimationFrame(frame);
 </script>
+
+<!-- Google AdSense Ad Banner (Bottom) -->
+<div id="ad-banner" style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); border-top: 1px solid rgba(255,255,255,0.1); padding: 8px 16px; text-align: center; z-index: 2000; max-height: 120px; overflow-y: auto;">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-xxxxxxxxxxxxxxxx"
+       crossorigin="anonymous"></script>
+  <!-- Bottom Banner Ad -->
+  <ins class="adsbygoogle"
+       style="display:inline-block;width:728px;height:90px;max-width:100%;"
+       data-ad-client="ca-pub-xxxxxxxxxxxxxxxx"
+       data-ad-slot="xxxxxxxxxx"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+</div>
+
+<!-- Adjust footer padding so it doesn't hide under the ad -->
+<style>
+  @media (max-width: 728px) {
+    #ad-banner { position: relative; }
+  }
+  body { padding-bottom: 110px; }
+  @media (max-width: 728px) {
+    body { padding-bottom: 24px; }
+  }
+</style>
+
+</body>
+</html>
