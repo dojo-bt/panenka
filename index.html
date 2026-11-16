@@ -755,7 +755,6 @@ function showIntro() {
     <div class="btn-row"><button class="btn big" id="go">Kick off</button><span class="muted">7 questions · ${TIME}s each · wrong guesses are free</span></div>
     <p>Every question has lots of right answers. Find the one the fewest fans would think of. Only the single rarest answer on each board hits the top corner.</p>
     ${st.played ? careerHTML(st) : ""}
-    <div class="topics"><span class="k">Today's teamsheet</span>${chipsHTML(G.qs)}</div>
     ${ladderHTML()}`);
   $("go").onclick = () => { SFX.unlock(); SFX.whistle(1); showQuestion(); };
 }
