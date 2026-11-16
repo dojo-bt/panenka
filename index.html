@@ -1,0 +1,1496 @@
+<title>Top Bins</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Martian+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: the whole page is the floodlit stadium (fixed canvas). Glass scoreboard on top, glass match card floating right on desktop, below the goal view on phones. Single dark look by choice. */
+:root {
+  --night: #05110b;
+  --glass: rgba(6, 18, 12, .76);
+  --chalk: #eef3ea;
+  --dim: #a3b8aa;
+  --line: rgba(238, 243, 234, .13);
+  --flood: #ffc53d;
+  --flood-ink: #2a1d00;
+  --red: #ff7a6b;
+  --ember: #ff8a3d;
+  --f-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --f-body: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-mono: "Martian Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--night);
+  color: var(--chalk);
+  font: 500 17px/1.45 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 24px;
+}
+#bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+.wrap { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; display: grid; gap: 16px; }
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25); backdrop-filter: blur(16px) saturate(1.25);
+  border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 24px 60px -24px rgba(0,0,0,.8);
+}
+
+/* ---------- Scoreboard ---------- */
+.board { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 16px; padding: 10px 16px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand svg { width: 36px; height: 36px; flex: none; animation: spin 8s linear infinite; filter: drop-shadow(0 0 10px rgba(255,197,61,.35)); }
+.brand-name { font: 900 32px/1 var(--f-display); letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+.brand-name span { color: var(--flood); }
+.brand-sub { font: 400 10px/1.3 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.pips { display: flex; justify-content: center; gap: 8px; }
+.pip { width: 26px; height: 26px; flex: none; border-radius: 50%; border: 2px dashed rgba(238,243,234,.28); display: grid; place-items: center; font: 600 10px/1 var(--f-mono); color: var(--dim); box-sizing: border-box; }
+.pip.now { border-style: solid; border-color: var(--flood); color: var(--flood); animation: pulse 1.6s ease-in-out infinite; }
+.pip.done { border: 0; animation: pop .5s cubic-bezier(.3,1.7,.5,1); box-shadow: 0 0 12px -2px currentColor; }
+.streak { display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line); background: rgba(0,0,0,.3); font: 600 10px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+.streak svg { width: 14px; height: 14px; fill: var(--dim); transform-origin: 50% 90%; }
+.streak b { font-size: 14px; color: var(--chalk); letter-spacing: 0; }
+.streak.risk { border-color: rgba(255,197,61,.5); }
+.streak.risk svg { fill: var(--flood); animation: flick 1.2s ease-in-out infinite; }
+.streak.hot { border-color: rgba(255,138,61,.6); background: rgba(255,110,50,.14); }
+.streak.hot svg { fill: var(--ember); animation: flick .8s ease-in-out infinite; }
+.streak.hot b { color: #ffb37a; }
+.score { display: flex; align-items: center; gap: 12px; }
+.roar { display: grid; gap: 5px; width: 116px; }
+.roar .lbl, .score .lbl { font: 600 10px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.roar .meter { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+.roar .meter i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, #2f7a54, var(--flood) 60%, var(--red)); transition: width 1s cubic-bezier(.2,.9,.2,1); }
+.roar .word { font: 600 11px/1 var(--f-mono); color: var(--chalk); }
+.pts-box { text-align: right; }
+.pts-box .num { display: block; margin-top: 4px; font: 600 28px/1 var(--f-mono); color: var(--flood); background: #000; padding: 5px 10px; border-radius: 4px; text-shadow: 0 0 12px rgba(255,197,61,.5); font-variant-numeric: tabular-nums; }
+.icon-btn { width: 36px; height: 36px; flex: none; display: grid; place-items: center; padding: 0; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--chalk); cursor: pointer; transition: background .15s ease; }
+.icon-btn:hover { background: rgba(255,255,255,.1); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn .x { display: none; }
+.icon-btn[aria-pressed="true"] { color: var(--dim); }
+.icon-btn[aria-pressed="true"] .x { display: block; }
+.icon-btn[aria-pressed="true"] .wv { display: none; }
+
+/* ---------- Stage ---------- */
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 24px; align-items: start; }
+.slot { height: calc(100vh - 140px); min-height: 380px; pointer-events: none; }
+.side { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.panel { position: relative; padding: 22px; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.panel::before { content: ""; position: absolute; inset: -1px 18px auto; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--flood), transparent); opacity: .8; }
+.panel > * { min-width: 0; }
+.view-in > * { animation: rise .5s cubic-bezier(.2,.9,.25,1.15) both; }
+.view-in > *:nth-child(2) { animation-delay: .05s; } .view-in > *:nth-child(3) { animation-delay: .1s; }
+.view-in > *:nth-child(4) { animation-delay: .15s; } .view-in > *:nth-child(5) { animation-delay: .2s; }
+.view-in > *:nth-child(6) { animation-delay: .25s; } .view-in > *:nth-child(n+7) { animation-delay: .3s; }
+
+.eyebrow { font: 600 11px/1.3 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--flood); }
+.k { font: 600 10px/1.3 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.k b { color: var(--chalk); font-variant-numeric: tabular-nums; }
+h1, h2 { font-family: var(--f-display); text-transform: uppercase; line-height: .94; margin: 0; text-wrap: balance; }
+h1 { font-weight: 900; font-size: clamp(36px, 3.9vw, 50px); }
+h1 em { font-style: normal; background: linear-gradient(100deg, var(--flood) 30%, #fff3c4 50%, var(--flood) 70%); background-size: 220% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 3.6s linear infinite; }
+h2 { font-weight: 800; font-size: clamp(28px, 2.6vw, 36px); }
+p { margin: 0; max-width: 62ch; }
+.muted { color: var(--dim); font-size: 15px; }
+.hook { color: var(--flood); font-weight: 600; }
+
+/* Tier ladder */
+.ladder { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.ladder li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,.035); font-size: 15px; transition: transform .2s ease, background .2s ease; }
+.ladder li:hover { transform: translateX(4px); background: rgba(255,255,255,.07); }
+.ladder .sw { width: 14px; height: 14px; border-radius: 50%; background: var(--c); box-shadow: 0 0 12px -1px var(--c); }
+.ladder .nm { font-weight: 700; }
+.ladder .th, .ladder .pt { font: 400 11px/1 var(--f-mono); color: var(--dim); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.ladder .pt { color: var(--c); font-weight: 600; min-width: 3.5ch; }
+details.how summary { cursor: pointer; font: 600 11px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--dim); padding: 6px 0; }
+details.how[open] summary { margin-bottom: 8px; }
+
+/* Controls */
+.btn {
+  position: relative; overflow: hidden;
+  font: 800 21px/1 var(--f-display); text-transform: uppercase; letter-spacing: .05em;
+  background: var(--flood); color: var(--flood-ink); border: 0; border-radius: 6px;
+  padding: 14px 24px; cursor: pointer; justify-self: start;
+  box-shadow: 0 6px 0 -1px #a0760f, 0 12px 28px -8px rgba(255,197,61,.55);
+  transition: transform .12s ease, box-shadow .12s ease, filter .15s ease;
+}
+.btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.5) 50%, transparent 60%); transform: translateX(-120%); animation: shine 3.4s ease-in-out infinite; pointer-events: none; }
+.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 -1px #a0760f; }
+.btn.big { font-size: 26px; padding: 16px 30px; }
+.btn.ghost { background: rgba(255,255,255,.04); color: var(--chalk); border: 1px solid var(--line); box-shadow: none; font-size: 17px; padding: 12px 16px; }
+.btn.ghost::after { content: none; }
+.btn.ghost:active { transform: translateY(1px); }
+.btn.sm { font-size: 16px; padding: 9px 14px; box-shadow: 0 4px 0 -1px #a0760f; }
+.btn.ghost.sm { box-shadow: none; }
+.btn:focus-visible, input:focus-visible, summary:focus-visible, textarea:focus-visible, .icon-btn:focus-visible { outline: 3px solid var(--chalk); outline-offset: 2px; }
+.btn-row { display: flex; gap: 10px 12px; flex-wrap: wrap; align-items: center; }
+.answer-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.answer-row input { flex: 1 1 210px; min-width: 0; font: 600 21px/1 var(--f-body); color: var(--chalk); background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 6px; padding: 13px 14px; transition: border-color .15s ease, box-shadow .15s ease; }
+.answer-row input:focus { border-color: var(--flood); box-shadow: 0 0 0 3px rgba(255,197,61,.18); outline: none; }
+.answer-row input::placeholder { color: var(--dim); opacity: .7; }
+.answer-row input.shake { animation: shake .35s; border-color: var(--red); }
+.count-chip { font: 600 11px/1.3 var(--f-mono); color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
+.count-chip b { color: var(--chalk); }
+
+/* Question */
+.q-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.q-meta { display: grid; gap: 7px; justify-items: start; min-width: 0; }
+.topic { font: 600 13px/1 var(--f-body); padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(255,197,61,.4); background: rgba(255,197,61,.08); color: var(--chalk); }
+.ring { position: relative; width: 54px; height: 54px; flex: none; display: grid; place-items: center; }
+.ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 4; }
+.ring .rb { stroke: rgba(255,255,255,.1); }
+.ring .rf { stroke: var(--flood); stroke-linecap: round; stroke-dasharray: 119.4; transition: stroke-dashoffset .12s linear; filter: drop-shadow(0 0 4px rgba(255,197,61,.7)); }
+.ring b { position: relative; font: 600 19px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.ring.low { animation: tick 1s ease-in-out infinite; }
+.ring.low .rf { stroke: var(--red); filter: drop-shadow(0 0 5px rgba(255,122,107,.8)); }
+.ring.low b { color: var(--red); }
+.feedback:empty, .tries:empty { display: none; }
+.feedback .bad { color: var(--red); font-size: 16px; }
+.suggest { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; padding: 10px 12px; border: 1px solid rgba(255,197,61,.45); background: rgba(255,197,61,.08); border-radius: 6px; animation: rise .3s ease both; }
+.suggest b { color: var(--flood); }
+.tries { display: flex; flex-wrap: wrap; gap: 6px; }
+.tries span { font-size: 14px; text-decoration: line-through; color: var(--dim); padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; overflow-wrap: anywhere; }
+
+/* Result */
+.stamp { justify-self: start; font: 900 clamp(34px, 3.6vw, 48px)/1 var(--f-display); text-transform: uppercase; color: var(--c); border: 3px solid var(--c); padding: 6px 14px 4px; border-radius: 6px; transform: rotate(-3deg); text-shadow: 0 0 18px color-mix(in srgb, var(--c) 50%, transparent); box-shadow: 0 0 30px -10px var(--c); }
+.view-in > .stamp { animation: stamp .6s cubic-bezier(.2,1.4,.4,1) both; }
+.ptsbig { font: 900 clamp(60px, 6vw, 80px)/.9 var(--f-display); color: var(--c); font-variant-numeric: tabular-nums; }
+.view-in > .ptsbig { animation: popin .6s .15s cubic-bezier(.2,1.6,.4,1) both; }
+.ptsbig small { font-size: .32em; margin-left: 6px; letter-spacing: .04em; }
+.rarity { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.3); }
+.rarity-top { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; align-items: baseline; }
+.rarity-top span:first-child { font-weight: 700; font-size: 19px; overflow-wrap: anywhere; min-width: 0; }
+.rarity-top span:last-child { font: 600 12px/1 var(--f-mono); color: var(--flood); font-variant-numeric: tabular-nums; }
+.rarity-bar, .rank-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; margin-block: 4px 2px; }
+.rarity-bar i, .rank-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: linear-gradient(90deg, #d79a1c, var(--flood)); transition: width 1.1s cubic-bezier(.2,.9,.2,1); }
+.rarity-msg { font: 400 11px/1.3 var(--f-mono); color: var(--dim); }
+.auto { height: 4px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
+.auto i { display: block; height: 100%; width: 0; background: var(--dim); animation: fill 3.6s linear forwards; }
+.why { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid rgba(255,197,61,.4); background: linear-gradient(135deg, rgba(255,197,61,.14), rgba(255,197,61,.04)); border-radius: 6px; }
+.why-k { font: 600 10px/1.3 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--flood); }
+.why p { font-size: 15px; line-height: 1.4; }
+
+/* Career: rank, form guide, badges, teamsheet */
+.career { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(0,0,0,.3); }
+.rank-top { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; align-items: baseline; }
+.rank-name { font: 800 22px/1 var(--f-display); text-transform: uppercase; letter-spacing: .03em; }
+.rank-next { font: 400 11px/1.3 var(--f-mono); color: var(--dim); }
+.form { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.fchip { display: grid; gap: 4px; justify-items: center; padding: 7px 2px; border-radius: 6px; background: rgba(255,255,255,.05); border: 1px solid transparent; }
+.fchip b { font: 600 14px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.fchip small { font: 400 9px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+.fchip.g4 b { color: #ffc53d; } .fchip.g3 b { color: #7ee08a; } .fchip.g2 b { color: #6fc3ff; } .fchip.g1 b { color: #d39a5b; }
+.fchip.miss { background: none; border: 1px dashed var(--line); opacity: .6; }
+.fchip.today { border: 1px solid var(--flood); animation: pulse 1.6s ease-in-out infinite; }
+.fchip.today b { color: var(--flood); }
+.topics, .cabinet { display: grid; gap: 8px; }
+.chips, .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 600 13px/1 var(--f-body); padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.05); }
+.chip.more { color: var(--dim); border-style: dashed; background: none; }
+.badge { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/1 var(--f-body); padding: 6px 10px 6px 8px; border-radius: 999px; border: 1px dashed var(--line); color: var(--dim); }
+.badge::before { content: ""; width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; opacity: .6; }
+.badge.on { border: 1px solid rgba(255,197,61,.55); color: var(--chalk); background: rgba(255,197,61,.1); }
+.badge.on::before { background: var(--flood); border-color: var(--flood); box-shadow: 0 0 8px var(--flood); opacity: 1; }
+.badge.new { animation: popin .6s .4s cubic-bezier(.2,1.6,.4,1) both; box-shadow: 0 0 18px -4px var(--flood); }
+.next-badge { font: 400 11px/1.4 var(--f-mono); color: var(--dim); }
+.motm { display: grid; gap: 3px; padding: 10px 12px; border-left: 4px solid var(--c); background: linear-gradient(90deg, color-mix(in srgb, var(--c) 16%, transparent), transparent); border-radius: 6px; }
+.motm b { font-size: 20px; line-height: 1.2; overflow-wrap: anywhere; }
+.motm small { font: 400 11px/1.3 var(--f-mono); color: var(--c); }
+.promo { justify-self: start; padding: 8px 12px 6px; border-radius: 6px; background: var(--flood); color: var(--flood-ink); font: 800 19px/1 var(--f-display); text-transform: uppercase; letter-spacing: .04em; box-shadow: 0 0 30px -6px var(--flood); }
+
+/* Full time */
+.ft-score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ft-score .big { font: 900 clamp(70px, 7vw, 96px)/.85 var(--f-display); color: var(--flood); font-variant-numeric: tabular-nums; text-shadow: 0 0 34px rgba(255,197,61,.4); }
+.ft-score .of { font: 600 14px/1.3 var(--f-mono); color: var(--dim); }
+.ans-list { display: grid; gap: 6px; }
+details.ans { background: rgba(0,0,0,.28); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 6px; transition: background .2s ease; }
+details.ans[open] { background: rgba(0,0,0,.42); }
+details.ans summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 26px minmax(0,1fr) auto 14px; gap: 10px; align-items: center; padding: 10px 12px; }
+details.ans summary::-webkit-details-marker { display: none; }
+details.ans summary:hover { background: rgba(255,255,255,.04); }
+details.ans .n { font: 600 11px/1 var(--f-mono); color: var(--dim); }
+details.ans .q b { display: block; overflow-wrap: anywhere; }
+details.ans .q small { display: block; color: var(--dim); font-size: 13px; line-height: 1.25; overflow-wrap: anywhere; }
+details.ans .t { text-align: right; font: 600 11px/1.4 var(--f-mono); color: var(--c); white-space: nowrap; }
+details.ans .t em { display: block; font-style: normal; color: var(--chalk); }
+details.ans .chev { width: 14px; height: 14px; color: var(--dim); transition: transform .25s ease; }
+details.ans[open] .chev { transform: rotate(180deg); color: var(--chalk); }
+details.ans .why { margin: 8px 8px 4px; }
+details.ans[open] .why, details.ans[open] .alist { animation: drop .35s ease both; }
+.asearch { margin: 8px 8px 0; display: grid; gap: 6px; }
+.search { display: flex; align-items: center; gap: 10px; padding: 0 10px; background: rgba(0,0,0,.42); border: 1px solid var(--line); border-radius: 6px; transition: border-color .15s ease, box-shadow .15s ease; }
+.search:focus-within { border-color: var(--flood); box-shadow: 0 0 0 3px rgba(255,197,61,.18); }
+.search svg { width: 16px; height: 16px; flex: none; color: var(--dim); }
+.search:focus-within svg { color: var(--flood); }
+.search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--chalk); font: 600 16px/1 var(--f-body); padding: 9px 0; }
+.search input::placeholder { color: var(--dim); opacity: .75; }
+.search input::-webkit-search-cancel-button { display: none; }
+.search .clear { flex: none; background: none; border: 0; color: var(--dim); font: 600 11px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; padding: 6px 2px; }
+.search .clear:hover, .search .clear:focus-visible { color: var(--chalk); }
+.srch-res { font: 600 11px/1.3 var(--f-mono); color: var(--dim); letter-spacing: .06em; margin: 0 2px; }
+.srch-res:empty { display: none; }
+.alist { list-style: none; margin: 0; padding: 6px 8px 10px; display: grid; gap: 2px; max-height: 320px; overflow-y: auto; }
+.alist li { display: grid; grid-template-columns: 8px minmax(0,1fr) auto auto; gap: 10px; align-items: center; padding: 4px 8px; border-radius: 4px; font-size: 15px; }
+.alist li:nth-child(odd) { background: rgba(255,255,255,.025); }
+.alist li i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.alist .nm { overflow-wrap: anywhere; }
+.alist .tn { font: 400 10px/1 var(--f-mono); color: var(--c); white-space: nowrap; }
+.alist .pc { font: 400 11px/1 var(--f-mono); color: var(--dim); font-variant-numeric: tabular-nums; min-width: 5.5ch; text-align: right; }
+.alist li.me { background: rgba(255,197,61,.16); outline: 1px solid rgba(255,197,61,.4); }
+.alist li.me .nm { color: var(--flood); font-weight: 700; }
+.alist li.hit .nm { font-weight: 700; }
+.alist li[hidden], .why[hidden], .search .clear[hidden] { display: none; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.stats div { background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.stats b { display: block; font: 600 20px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.stats span { font: 400 10px/1.3 var(--f-mono); color: var(--dim); text-transform: uppercase; letter-spacing: .08em; }
+.share { width: 100%; box-sizing: border-box; resize: none; overflow: hidden; font: 400 13px/1.5 var(--f-mono); background: rgba(0,0,0,.35); color: var(--chalk); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.toast { font: 600 12px/1 var(--f-mono); color: #7ee08a; }
+
+.foot { font-size: 13px; color: var(--dim); text-align: center; max-width: none; text-shadow: 0 1px 6px #000; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(255,197,61,.18); } }
+@keyframes pop { 0% { transform: scale(.3); } 100% { transform: scale(1); } }
+@keyframes rise { from { transform: translateY(14px); opacity: .2; } to { transform: none; opacity: 1; } }
+@keyframes stamp { 0% { transform: scale(2) rotate(-12deg); opacity: .2; } 60% { transform: scale(.94) rotate(-2deg); opacity: 1; } 100% { transform: scale(1) rotate(-3deg); } }
+@keyframes popin { 0% { transform: scale(.4); opacity: .2; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes tick { 50% { transform: scale(1.12); } }
+@keyframes fill { to { width: 100%; } }
+@keyframes drop { from { transform: translateY(-6px); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes flick { 50% { transform: scale(1.2) rotate(-5deg); } }
+@keyframes shine { 0%, 62% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+@keyframes sheen { from { background-position: 120% 0; } to { background-position: -100% 0; } }
+
+@media (max-width: 1100px) { .stage { grid-template-columns: minmax(0, 1fr) 400px; } .roar { width: 88px; } .streak span { display: none; } }
+@media (max-width: 900px) {
+  .stage { grid-template-columns: 1fr; gap: 12px; }
+  .slot { height: 30vh; min-height: 180px; max-height: 360px; }
+  .board { grid-template-columns: minmax(0,1fr) auto; gap: 10px 12px; }
+  .brand { grid-area: 1 / 1; } .score { grid-area: 1 / 2; }
+  .pips { grid-area: 2 / 1 / 3 / 3; justify-content: flex-start; } .streak { grid-area: 2 / 1 / 3 / 3; justify-self: end; }
+}
+@media (max-width: 480px) {
+  .brand-name { font-size: 26px; }
+  .brand svg { width: 28px; height: 28px; }
+  .roar { display: none; }
+  .score { gap: 8px; }
+  .pts-box .num { font-size: 24px; padding: 5px 8px; }
+  .icon-btn { width: 32px; height: 32px; }
+  .pip { width: 22px; height: 22px; } .pips { gap: 5px; }
+  .streak { padding: 6px 9px; }
+  .panel { padding: 16px; }
+  .btn.big { font-size: 23px; padding: 15px 24px; }
+  details.ans summary { grid-template-columns: 22px minmax(0,1fr) 14px; }
+  details.ans .t { grid-column: 2; grid-row: 2; text-align: left; }
+  details.ans .t em { display: inline; margin-left: 6px; }
+  details.ans .chev { grid-column: 3; grid-row: 1; }
+  .alist .tn { display: none; }
+  .alist li { grid-template-columns: 8px minmax(0,1fr) auto; }
+  .stats b { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .btn::after { content: none; }
+}
+</style>
+
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header class="board glass">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" fill="#eef3ea"/>
+        <polygon points="20,12 27,17 24.5,25 15.5,25 13,17" fill="#0c2a1e"/>
+        <path d="M20 12V3M27 17l8-3M24.5 25l5 7M15.5 25l-5 7M13 17l-8-3" stroke="#0c2a1e" stroke-width="2" fill="none"/>
+      </svg>
+      <div><div class="brand-name">Top <span>Bins</span></div><div class="brand-sub" id="meta">Daily football quiz</div></div>
+    </div>
+    <div class="pips" id="pips" aria-label="Progress through today's seven questions"></div>
+    <div class="streak" id="streak">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10.5 1c.6 3.6 4.5 5 4.5 9.8A5.1 5.1 0 0 1 10 16a5.1 5.1 0 0 1-5-5.2c0-2 1-3.3 2.1-4.3 0 1.800.8 2.900 1.800 3.100C9.800 6.700 8.600 4.300 10.500 1z"/></svg>
+      <b id="streakN">0</b><span>day streak</span>
+    </div>
+    <div class="score">
+      <div class="roar" title="The crowd gets louder as you score"><span class="lbl">Crowd roar</span><div class="meter"><i id="roarFill"></i></div><span class="word" id="roarWord">Quiet</span></div>
+      <div class="pts-box"><span class="lbl">Points</span><span class="num" id="total">0</span></div>
+      <button class="icon-btn" id="mute" type="button" aria-label="Mute sound" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7.500h3l4-3.200v11.400l-4-3.200H3z" fill="currentColor"/><path class="wv" d="M13 7.600a3.400 3.400 0 0 1 0 4.800M15 5.200a6.800 6.800 0 0 1 0 9.600" fill="none" stroke="currentColor" stroke-width="1.600" stroke-linecap="round"/><path class="x" d="M13 7.800l4.400 4.400M17.400 7.800L13 12.200" fill="none" stroke="currentColor" stroke-width="1.600" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="slot" id="slot" aria-hidden="true"></div>
+    <div class="side">
+      <section class="panel glass" id="panel" aria-live="polite"></section>
+    </div>
+  </main>
+
+  <p class="foot">Seven new questions every day at midnight. Rarity figures are our estimates of how often fans give each answer.</p>
+</div>
+
+<script>
+// ================= Question bank =================
+// [percent of fans who'd give it, display name, extra aliases separated by |]
+// Every question has one answer rarer than all the rest: that one is the Top Bins.
+const NEW_QS = [
+ { q: "Name a country that played at a men's World Cup before 2026", note: "Former nations like West Germany, Yugoslavia and Zaire count.", a: [
+  [12,"Brazil"],[10,"Germany","west germany"],[9,"Argentina"],[8,"France"],[7,"Italy"],[7,"England"],[6,"Spain"],[4,"Netherlands","holland"],[4,"Portugal"],[3,"Mexico"],[3,"United States","usa|us|america"],[2,"Belgium"],[2,"Croatia"],[2,"Uruguay"],[1.5,"Japan"],[1.5,"South Korea","korea|korea republic"],[1.2,"Cameroon"],[1.2,"Nigeria"],[1,"Denmark"],[1,"Sweden"],[1,"Switzerland"],[1,"Australia"],[1,"Morocco"],[1,"Senegal"],[1,"Ghana"],[1,"Colombia"],[.8,"Chile"],[.8,"Poland"],[.8,"Scotland"],[.8,"Saudi Arabia"],[.8,"Qatar"],[.8,"Russia"],[.6,"Republic of Ireland","ireland|eire"],[.6,"Wales"],[.5,"Ecuador"],[.5,"Costa Rica"],[.5,"Serbia","serbia and montenegro"],[.5,"Egypt"],[.5,"Iran"],[.4,"Tunisia"],[.4,"Paraguay"],[.4,"Peru"],[.4,"Austria"],[.4,"Ivory Coast","cote divoire"],[.3,"Algeria"],[.3,"Greece"],[.3,"Turkey","turkiye"],[.3,"Romania"],[.3,"Hungary"],[.3,"Norway"],[.3,"Northern Ireland"],[.3,"Iceland"],[.3,"South Africa"],[.3,"Canada"],[.25,"Czech Republic","czechia"],[.25,"Bulgaria"],[.25,"Ukraine"],[.2,"Panama"],[.2,"Jamaica"],[.2,"New Zealand"],[.2,"Soviet Union","ussr"],[.2,"Yugoslavia"],[.15,"Czechoslovakia"],[.15,"China"],[.15,"North Korea","dpr korea"],[.12,"Slovakia"],[.12,"Slovenia"],[.12,"Bosnia and Herzegovina","bosnia"],[.1,"Honduras"],[.1,"Bolivia"],[.1,"Trinidad and Tobago","trinidad"],[.1,"East Germany","gdr"],[.08,"Togo"],[.08,"Angola"],[.06,"El Salvador"],[.05,"Haiti"],[.05,"Kuwait"],[.05,"Iraq"],[.05,"United Arab Emirates","uae"],[.04,"Israel"],[.04,"Zaire","dr congo|drc"],[.03,"Cuba"],[.01,"Dutch East Indies","indonesia"]]},
+ { q: "Name a Liverpool player who played in the 2005 or 2019 Champions League final", note: "Starters or substitutes who came on.", people: true, a: [
+  [25,"Steven Gerrard","stevie g"],[12,"Mohamed Salah","mo salah"],[10,"Virgil van Dijk","van dijk|vvd"],[8,"Sadio Mané"],[6,"Roberto Firmino","bobby firmino"],[5,"Alisson Becker","alisson"],[5,"Jamie Carragher","carra"],[4,"Trent Alexander-Arnold","trent|taa|alexander arnold"],[4,"Jordan Henderson","hendo"],[4,"Andy Robertson","robbo"],[3,"Xabi Alonso"],[3,"Jerzy Dudek"],[3,"Divock Origi"],[2,"Georginio Wijnaldum","gini wijnaldum|gini"],[2,"Fabinho"],[2,"James Milner"],[1.5,"John Arne Riise"],[1.2,"Sami Hyypiä"],[1,"Luis García"],[1,"Milan Baroš"],[1,"Harry Kewell"],[1,"Joël Matip"],[1,"Dietmar Hamann","didi hamann"],[.8,"Djibril Cissé"],[.7,"Vladimír Šmicer"],[.6,"Joe Gomez"],[.4,"Steve Finnan"],[.2,"Djimi Traoré"]]},
+ { q: "Name a Manchester United player who played in the 1999 or 2008 Champions League final", note: "Starters or substitutes who came on.", people: true, a: [
+  [18,"Cristiano Ronaldo","ronaldo|cr7|cristiano"],[12,"David Beckham"],[10,"Wayne Rooney"],[8,"Ryan Giggs"],[6,"Ole Gunnar Solskjær","ole|solskjaer"],[5,"Teddy Sheringham"],[5,"Peter Schmeichel"],[5,"Rio Ferdinand"],[4,"Paul Scholes"],[4,"Nemanja Vidić"],[4,"Edwin van der Sar","van der sar|vds"],[3,"Carlos Tevez"],[3,"Gary Neville"],[2.5,"Dwight Yorke"],[2.5,"Andy Cole","andrew cole"],[2,"Patrice Evra"],[2,"Michael Carrick"],[1.5,"Jaap Stam"],[1.5,"Nicky Butt"],[1,"Denis Irwin"],[1,"Nani"],[.8,"Anderson"],[.8,"Owen Hargreaves"],[.6,"Wes Brown"],[.4,"Ronny Johnsen"],[.2,"Jesper Blomqvist"]]},
+ { q: "Name a club that has been champions of England", note: "Premier League or old First Division, up to 2024–25.", a: [
+  [22,"Manchester United","man utd|man united|man u"],[20,"Liverpool"],[14,"Arsenal"],[12,"Manchester City","man city"],[10,"Chelsea"],[4,"Everton"],[3,"Blackburn Rovers","blackburn"],[3,"Leicester City","leicester"],[2.5,"Aston Villa","villa"],[1.5,"Tottenham Hotspur","tottenham|spurs"],[1.5,"Newcastle United","newcastle"],[1.5,"Leeds United","leeds"],[1.5,"Nottingham Forest","forest"],[1,"Wolverhampton Wanderers","wolves"],[.8,"Derby County","derby"],[.6,"Sunderland"],[.6,"Ipswich Town","ipswich"],[.5,"Burnley"],[.4,"Sheffield Wednesday","sheff wed"],[.4,"Portsmouth","pompey"],[.3,"West Bromwich Albion","west brom|wba"],[.3,"Huddersfield Town","huddersfield"],[.2,"Sheffield United","sheff utd"],[.1,"Preston North End","preston"]]},
+ { q: "Name a club that has played in the Scottish Premiership", note: "Any season from 2013–14 to 2024–25.", a: [
+  [30,"Celtic"],[28,"Rangers"],[10,"Aberdeen"],[7,"Heart of Midlothian","hearts"],[6,"Hibernian","hibs"],[3,"Kilmarnock","killie"],[3,"Motherwell"],[2.5,"Dundee United"],[2,"St Mirren"],[2,"St Johnstone"],[2,"Dundee"],[1,"Ross County"],[1,"Livingston"],[.8,"Inverness Caledonian Thistle","inverness|ict|caley thistle|inverness ct"],[.6,"Partick Thistle","partick"],[.4,"Hamilton Academical","hamilton|accies"]]},
+ { q: "Name a country that has won Olympic gold in men's football", note: "Any Games up to Paris 2024.", a: [
+  [18,"Brazil"],[15,"Argentina"],[10,"Spain"],[6,"Uruguay"],[5,"Hungary"],[5,"Mexico"],[5,"Nigeria"],[4,"Cameroon"],[3,"France"],[3,"Italy"],[3,"Soviet Union","ussr"],[3,"Great Britain","gb|team gb|britain"],[2,"Yugoslavia"],[2,"Sweden"],[1.5,"Poland"],[1,"East Germany","gdr"],[1,"Belgium"],[.8,"Czechoslovakia"],[.2,"Canada"]]},
+ { q: "Name a national team that belongs to UEFA", note: "Any of the 55 European member associations.", a: [
+  [8,"England"],[7,"France"],[7,"Germany"],[7,"Spain"],[6,"Italy"],[5,"Portugal"],[5,"Netherlands","holland"],[3,"Belgium"],[3,"Croatia"],[3,"Scotland"],[3,"Wales"],[2.5,"Republic of Ireland","ireland|eire"],[2.5,"Denmark"],[2,"Switzerland"],[2,"Sweden"],[2,"Poland"],[2,"Austria"],[2,"Norway"],[1.5,"Turkey","turkiye"],[1.5,"Greece"],[1.5,"Ukraine"],[1.5,"Serbia"],[1.5,"Northern Ireland"],[1.5,"Czech Republic","czechia"],[1.2,"Russia"],[1.2,"Hungary"],[1,"Romania"],[1,"Iceland"],[1,"Finland"],[.8,"Slovakia"],[.8,"Slovenia"],[.8,"Bulgaria"],[.8,"Albania"],[.6,"Bosnia and Herzegovina","bosnia"],[.6,"Georgia"],[.6,"Israel"],[.6,"San Marino"],[.5,"Cyprus"],[.5,"Malta"],[.5,"Luxembourg"],[.5,"Andorra"],[.5,"Gibraltar"],[.4,"Faroe Islands","faroes|faroe"],[.4,"Liechtenstein"],[.4,"Montenegro"],[.3,"North Macedonia","macedonia"],[.3,"Kosovo"],[.3,"Estonia"],[.3,"Latvia"],[.3,"Lithuania"],[.3,"Belarus"],[.25,"Moldova"],[.2,"Armenia"],[.2,"Azerbaijan"],[.05,"Kazakhstan"]]},
+ { q: "Name an African international who has won the Premier League", note: "Title-winning squads up to 2024–25.", people: true, a: [
+  [20,"Didier Drogba"],[18,"Mohamed Salah","mo salah"],[12,"Sadio Mané"],[10,"Yaya Touré","yaya"],[8,"Riyad Mahrez"],[6,"Michael Essien"],[5,"Kolo Touré","kolo"],[4,"Nwankwo Kanu","kanu"],[3,"John Obi Mikel","obi mikel|mikel"],[2,"Lauren"],[2,"Salomon Kalou"],[1.5,"Joël Matip"],[1.5,"Naby Keïta"],[1,"Victor Moses"],[.5,"Geremi"],[.2,"Quinton Fortune"]]},
+ { q: "Name a country that has reached a men's Euros semi-final", note: "Any tournament up to Euro 2024.", a: [
+  [12,"Spain"],[12,"Germany","west germany"],[10,"France"],[9,"Italy"],[8,"Portugal"],[8,"England"],[7,"Netherlands","holland"],[4,"Denmark"],[3,"Greece"],[3,"Wales"],[2,"Russia"],[2,"Belgium"],[2,"Czech Republic","czechia"],[2,"Turkey","turkiye"],[1,"Soviet Union","ussr"],[.8,"Yugoslavia"],[.8,"Czechoslovakia"],[.6,"Sweden"],[.3,"Hungary"]]},
+ { q: "Name a member of Arsenal's 2003–04 Invincibles squad", note: "The squad that went the league season unbeaten.", people: true, a: [
+  [22,"Thierry Henry"],[12,"Patrick Vieira"],[10,"Dennis Bergkamp"],[7,"Robert Pires"],[6,"Sol Campbell"],[6,"Jens Lehmann"],[5,"Ashley Cole"],[5,"Freddie Ljungberg"],[4,"Gilberto Silva","gilberto"],[4,"Kolo Touré","kolo"],[3,"Lauren"],[2,"Ray Parlour"],[2,"Martin Keown"],[2,"Edu"],[2,"Nwankwo Kanu","kanu"],[2,"José Antonio Reyes"],[1.5,"Sylvain Wiltord"],[1.5,"Gaël Clichy"],[.8,"Pascal Cygan"],[.5,"Jérémie Aliadière"],[.4,"Cesc Fàbregas","cesc"],[.3,"Justin Hoyte"],[.2,"David Bentley"],[.1,"Stuart Taylor"]]},
+ { q: "Name a man who has managed England", note: "Permanent, caretaker or interim, since 1946.", people: true, a: [
+  [20,"Gareth Southgate"],[12,"Sven-Göran Eriksson","sven|eriksson"],[10,"Fabio Capello"],[8,"Roy Hodgson"],[8,"Alf Ramsey","sir alf"],[8,"Thomas Tuchel"],[6,"Bobby Robson"],[4,"Terry Venables","el tel"],[4,"Glenn Hoddle"],[4,"Kevin Keegan"],[4,"Steve McClaren"],[3,"Sam Allardyce","big sam"],[2.5,"Graham Taylor"],[2,"Don Revie"],[2,"Lee Carsley"],[1,"Stuart Pearce"],[1,"Ron Greenwood"],[.8,"Walter Winterbottom"],[.6,"Peter Taylor"],[.4,"Howard Wilkinson"],[.3,"Joe Mercer"]]},
+ { q: "Name a club that has won the UEFA Cup or Europa League", note: "Winners from 1972 to 2025.", a: [
+  [18,"Sevilla"],[7,"Atlético Madrid","atletico|atleti"],[7,"Chelsea"],[7,"Manchester United","man utd|man united|man u"],[6,"Liverpool"],[5,"Inter Milan","inter|internazionale"],[4,"Juventus","juve"],[4,"Porto"],[3,"Tottenham Hotspur","tottenham|spurs"],[3,"Villarreal"],[3,"Eintracht Frankfurt","frankfurt"],[3,"Atalanta"],[2,"Real Madrid"],[2,"Bayern Munich","bayern"],[1.5,"Feyenoord"],[1.5,"Ajax"],[1.2,"Napoli"],[1.2,"Parma"],[1.2,"Valencia"],[1,"Galatasaray"],[1,"Schalke 04","schalke"],[1,"Zenit Saint Petersburg","zenit"],[1,"Shakhtar Donetsk","shakhtar"],[.8,"CSKA Moscow","cska"],[.8,"Bayer Leverkusen","leverkusen"],[.6,"Borussia Mönchengladbach","gladbach|monchengladbach"],[.6,"PSV Eindhoven","psv"],[.4,"IFK Göteborg","goteborg|gothenburg"],[.4,"Anderlecht"],[.2,"Ipswich Town","ipswich"]]},
+ { q: "Name a player who won the Champions League with Real Madrid since 2014", note: "Squad members for the 2014, 2016, 2017, 2018, 2022 or 2024 wins.", people: true, a: [
+  [18,"Cristiano Ronaldo","ronaldo|cr7|cristiano"],[10,"Luka Modrić"],[8,"Karim Benzema"],[8,"Sergio Ramos"],[6,"Gareth Bale"],[6,"Toni Kroos"],[6,"Vinícius Júnior","vini|vinicius|vini jr"],[4,"Jude Bellingham"],[4,"Marcelo"],[3,"Thibaut Courtois"],[3,"Casemiro"],[3,"Dani Carvajal"],[2,"Federico Valverde","fede valverde"],[2,"Rodrygo"],[2,"Raphaël Varane"],[2,"Keylor Navas"],[2,"Iker Casillas"],[2,"Isco"],[1,"Nacho"],[1,"Eduardo Camavinga"],[1,"Antonio Rüdiger"],[1,"Éder Militão"],[1,"Ángel Di María","di maria"],[1,"Marco Asensio"],[1,"Aurélien Tchouaméni"],[1,"Lucas Vázquez"],[.8,"Pepe"],[.8,"David Alaba"],[.6,"Ferland Mendy"],[.6,"Mateo Kovačić"],[.6,"Álvaro Morata"],[.5,"Sami Khedira"],[.5,"James Rodríguez","james"],[.5,"Joselu"],[.4,"Arda Güler"],[.4,"Danilo"],[.3,"Fábio Coentrão"],[.3,"Asier Illarramendi"],[.3,"Álvaro Arbeloa"],[.3,"Jesé"],[.3,"Dani Ceballos"],[.3,"Andriy Lunin"],[.3,"Kepa Arrizabalaga","kepa"],[.3,"Brahim Díaz"],[.2,"Theo Hernández","theo"],[.2,"Fran García"],[.15,"Jesús Vallejo"],[.12,"Marcos Llorente"],[.1,"Kiko Casilla"],[.08,"Diego López"]]}
+];
+const CLASSIC_QS = [
+ { q: "Name a club that has played in the Premier League", note: "Any season since 1992–93.", a: [
+  [24,"Manchester United","man utd|man united|man u|manchester utd|mufc"],[20,"Liverpool","lfc"],[16,"Arsenal","gunners"],[12,"Chelsea"],[9,"Manchester City","man city|mcfc"],[6,"Tottenham Hotspur","tottenham|spurs|thfc"],[3,"Newcastle United","newcastle|toon"],[2,"Everton"],[1.5,"Aston Villa","villa"],[1.5,"West Ham United","west ham|hammers"],[.8,"Leeds United","leeds"],[.8,"Leicester City","leicester"],[.4,"Wolverhampton Wanderers","wolves|wolverhampton"],[.4,"Brighton & Hove Albion","brighton"],[.4,"Crystal Palace","palace"],[.4,"Southampton","saints"],[.3,"Nottingham Forest","forest|nottm forest|notts forest"],[.3,"Fulham"],[.3,"Sunderland"],[.25,"Blackburn Rovers","blackburn"],[.2,"Brentford"],[.2,"AFC Bournemouth","bournemouth"],[.15,"West Bromwich Albion","west brom|wba"],[.15,"Burnley"],[.15,"Middlesbrough","boro"],[.15,"Bolton Wanderers","bolton"],[.12,"Norwich City","norwich"],[.12,"Stoke City","stoke"],[.12,"Watford"],[.1,"Portsmouth","pompey"],[.1,"Sheffield United","sheff utd|sheffield utd|blades"],[.1,"Swansea City","swansea"],[.08,"Wigan Athletic","wigan"],[.07,"Ipswich Town","ipswich"],[.06,"Sheffield Wednesday","sheff wed|sheffield wed|owls"],[.06,"Queens Park Rangers","qpr"],[.06,"Derby County","derby"],[.05,"Hull City","hull"],[.05,"Wimbledon","crazy gang"],[.05,"Coventry City","coventry"],[.05,"Birmingham City","birmingham"],[.04,"Reading"],[.04,"Charlton Athletic","charlton"],[.04,"Luton Town","luton"],[.03,"Cardiff City","cardiff"],[.03,"Huddersfield Town","huddersfield"],[.03,"Blackpool"],[.02,"Bradford City","bradford"],[.02,"Barnsley"],[.02,"Oldham Athletic","oldham"],[.01,"Swindon Town","swindon"]]},
+ { q: "Name a club that has won the European Cup or Champions League", note: "Up to and including 2025.", a: [
+  [32,"Real Madrid"],[14,"Barcelona","barca"],[12,"Liverpool"],[10,"Bayern Munich","bayern|bayern munchen"],[8,"Manchester United","man utd|man united|man u"],[6,"AC Milan","milan"],[4,"Chelsea"],[2.5,"Inter Milan","inter|internazionale"],[2.5,"Manchester City","man city"],[1.5,"Juventus","juve"],[1.2,"Ajax"],[1.2,"Paris Saint-Germain","psg|paris sg"],[1,"Porto"],[.6,"Borussia Dortmund","dortmund|bvb"],[.6,"Nottingham Forest","forest"],[.5,"Benfica"],[.5,"Celtic"],[.4,"Aston Villa","villa"],[.3,"Marseille","olympique marseille"],[.15,"PSV Eindhoven","psv"],[.1,"Hamburg","hamburger sv|hsv|hamburg sv"],[.1,"Feyenoord"],[.08,"Red Star Belgrade","red star|crvena zvezda"],[.06,"Steaua Bucharest","steaua|fcsb"]]},
+ { q: "Name a winner of the men's Ballon d'Or", note: "Up to and including 2025.", people: true, a: [
+  [40,"Lionel Messi","leo messi"],[28,"Cristiano Ronaldo","ronaldo|cr7|cristiano"],[3,"Zinedine Zidane","zizou"],[3,"Ronaldinho"],[3,"Luka Modrić"],[2,"Kaká"],[2,"Ronaldo Nazário","r9|brazilian ronaldo"],[2,"Karim Benzema"],[1.5,"Ousmane Dembélé"],[1.5,"Rodri"],[1.2,"Johan Cruyff","cruijff"],[.8,"Marco van Basten","van basten"],[.6,"Michel Platini"],[.6,"Franz Beckenbauer"],[.5,"Luís Figo"],[.5,"Michael Owen"],[.4,"George Weah"],[.4,"Andriy Shevchenko"],[.35,"Fabio Cannavaro"],[.35,"Rivaldo"],[.35,"George Best"],[.3,"Eusébio"],[.3,"Lev Yashin"],[.3,"Roberto Baggio"],[.3,"Alfredo Di Stéfano","di stefano"],[.25,"Pavel Nedvěd"],[.25,"Ruud Gullit"],[.2,"Lothar Matthäus"],[.2,"Kevin Keegan"],[.2,"Gerd Müller","mueller"],[.2,"Bobby Charlton"],[.15,"Hristo Stoichkov"],[.12,"Karl-Heinz Rummenigge"],[.1,"Denis Law"],[.1,"Stanley Matthews"],[.06,"Jean-Pierre Papin"],[.06,"Raymond Kopa"],[.05,"Matthias Sammer"],[.05,"Gianni Rivera"],[.04,"Oleg Blokhin"],[.03,"Allan Simonsen"],[.03,"Igor Belanov"],[.03,"Josef Masopust"],[.03,"Omar Sívori"],[.03,"Luis Suárez Miramontes","luis suarez|suarez"],[.02,"Flórián Albert"]]},
+ { q: "Name a player who has played for both Barcelona and Real Madrid", note: "First-team appearances for both clubs.", people: true, a: [
+  [30,"Luís Figo"],[18,"Ronaldo Nazário","ronaldo|r9"],[14,"Luis Enrique","enrique"],[10,"Michael Laudrup"],[7,"Samuel Eto'o","etoo"],[4,"Bernd Schuster"],[3,"Javier Saviola"],[3,"Gheorghe Hagi"],[2,"Robert Prosinečki"],[1.5,"Julen Lopetegui"],[1,"Alfonso Pérez","alfonso"],[1,"Albert Celades"],[.6,"Ricardo Zamora"],[.4,"Luis Milla"],[.3,"Josep Samitier"],[.2,"Miquel Soler"],[.1,"Nando Muñoz","nando"],[.08,"Evaristo de Macedo","evaristo"],[.06,"Justo Tejada"]]},
+ { q: "Name a player who scored in a men's World Cup final", note: "Finals up to 2022. Penalties count, shootouts don't.", people: true, a: [
+  [22,"Kylian Mbappé"],[14,"Lionel Messi"],[12,"Zinedine Zidane"],[8,"Pelé"],[7,"Ronaldo Nazário","ronaldo|r9"],[7,"Geoff Hurst"],[5,"Mario Götze","goetze"],[5,"Andrés Iniesta"],[4,"Ángel Di María","di maria"],[2,"Paul Pogba"],[2,"Antoine Griezmann"],[1.5,"Mario Mandžukić"],[1.2,"Marco Materazzi"],[1,"Ivan Perišić"],[.8,"Emmanuel Petit"],[.6,"Paolo Rossi"],[.6,"Mario Kempes"],[.6,"Andreas Brehme"],[.5,"Gerd Müller","mueller"],[.5,"Carlos Alberto"],[.4,"Jairzinho"],[.4,"Marco Tardelli"],[.3,"Paul Breitner"],[.3,"Johan Neeskens"],[.3,"Karl-Heinz Rummenigge"],[.3,"Rudi Völler"],[.25,"Jorge Valdano"],[.25,"Jorge Burruchaga"],[.25,"Martin Peters"],[.2,"Ferenc Puskás"],[.15,"Vavá"],[.15,"Mário Zagallo"],[.1,"Gérson"],[.1,"Alessandro Altobelli"],[.1,"Helmut Rahn"],[.05,"José Luis Brown"],[.05,"Daniel Bertoni"],[.05,"Dick Nanninga"],[.05,"Roberto Boninsegna"],[.05,"Helmut Haller"],[.05,"Wolfgang Weber"],[.05,"Max Morlock"],[.05,"Nils Liedholm"],[.05,"Amarildo"],[.05,"Silvio Piola"],[.03,"Zoltán Czibor"],[.03,"Zito"],[.03,"Josef Masopust"],[.02,"Agne Simonsson"],[.02,"Gino Colaussi"],[.02,"Pál Titkos"],[.02,"György Sárosi"],[.02,"Raimundo Orsi"],[.02,"Angelo Schiavio"],[.01,"Antonín Puč"],[.02,"Pablo Dorado"],[.02,"Héctor Castro"],[.02,"Pedro Cea"],[.02,"Santos Iriarte"],[.02,"Carlos Peucelle"],[.02,"Guillermo Stábile"]]},
+ { q: "Name a Premier League Golden Boot winner", note: "Outright or shared, up to 2024–25.", people: true, a: [
+  [20,"Mohamed Salah","mo salah"],[18,"Erling Haaland"],[14,"Harry Kane"],[12,"Thierry Henry"],[10,"Alan Shearer"],[4,"Robin van Persie","van persie|rvp"],[3.5,"Sergio Agüero","kun"],[3,"Didier Drogba"],[3,"Cristiano Ronaldo","ronaldo|cr7"],[2.5,"Luis Suárez"],[2,"Ruud van Nistelrooy","van nistelrooy|rvn"],[1.5,"Jamie Vardy"],[1.2,"Son Heung-min","son|sonny|heung min son"],[1,"Michael Owen"],[.8,"Sadio Mané"],[.8,"Pierre-Emerick Aubameyang","auba"],[.8,"Andy Cole","andrew cole"],[.6,"Carlos Tevez"],[.6,"Dimitar Berbatov"],[.5,"Nicolas Anelka"],[.4,"Jimmy Floyd Hasselbaink"],[.3,"Dwight Yorke"],[.3,"Teddy Sheringham"],[.2,"Kevin Phillips"],[.15,"Chris Sutton"],[.08,"Dion Dublin"]]},
+ { q: "Name a country that has hosted the men's World Cup", note: "Joint hosts count. Up to and including 2026.", a: [
+  [14,"Qatar"],[13,"Brazil"],[12,"Russia"],[10,"Germany","west germany"],[9,"United States","usa|us|america"],[8,"South Africa"],[6,"France"],[6,"England"],[4,"Italy"],[4,"Mexico"],[3,"Japan"],[2.5,"South Korea","korea"],[2,"Spain"],[1.5,"Canada"],[1,"Argentina"],[.6,"Uruguay"],[.3,"Sweden"],[.3,"Switzerland"],[.25,"Chile"]]},
+ { q: "Name a ground that has been a Premier League club's home stadium", note: "Current or former grounds, any season since 1992–93.", a: [
+  [22,"Old Trafford"],[20,"Anfield"],[14,"Emirates Stadium","emirates"],[12,"Stamford Bridge"],[9,"Etihad Stadium","etihad|city of manchester stadium"],[4,"Tottenham Hotspur Stadium","spurs stadium"],[4,"St James' Park","st james park"],[3,"Goodison Park","goodison"],[3,"Villa Park"],[2,"London Stadium","olympic stadium"],[1.2,"Elland Road"],[1,"King Power Stadium","king power"],[.8,"White Hart Lane"],[.8,"Molineux"],[.8,"Selhurst Park"],[.6,"Highbury"],[.6,"Upton Park","boleyn ground"],[.6,"St Mary's Stadium","st marys"],[.6,"City Ground"],[.6,"Craven Cottage"],[.5,"Wembley Stadium","wembley"],[.5,"Amex Stadium","american express stadium|falmer stadium|amex"],[.5,"Stadium of Light"],[.3,"Maine Road"],[.3,"Ewood Park"],[.3,"Vitality Stadium","dean court"],[.3,"The Hawthorns","hawthorns"],[.3,"Turf Moor"],[.2,"Gtech Community Stadium","brentford community stadium|gtech"],[.2,"Riverside Stadium","riverside"],[.2,"Carrow Road"],[.2,"Vicarage Road"],[.2,"Fratton Park"],[.15,"Bramall Lane"],[.15,"Hillsborough"],[.15,"Kenilworth Road"],[.1,"The Dell","dell"],[.1,"bet365 Stadium","britannia stadium|bet365"],[.1,"Swansea.com Stadium","liberty stadium"],[.1,"Loftus Road"],[.1,"Portman Road"],[.1,"Pride Park"],[.1,"The Valley","valley"],[.1,"St Andrew's","st andrews"],[.05,"Filbert Street"],[.05,"Highfield Road"],[.05,"Reebok Stadium","university of bolton stadium|macron stadium|toughsheet community stadium"],[.05,"DW Stadium","jjb stadium|brick community stadium"],[.05,"KC Stadium","mkm stadium|kcom stadium"],[.05,"Madejski Stadium","select car leasing stadium"],[.03,"Cardiff City Stadium"],[.03,"John Smith's Stadium","kirklees stadium|galpharm stadium"],[.03,"Bloomfield Road"],[.03,"Valley Parade"],[.03,"Ayresome Park"],[.03,"Baseball Ground"],[.03,"Burnden Park"],[.02,"Oakwell"],[.01,"Boundary Park"],[.02,"County Ground"]]},
+ { q: "Name a country that has won the Africa Cup of Nations", note: "Up to and including the 2023 tournament.", a: [
+  [25,"Egypt"],[12,"Nigeria"],[12,"Cameroon"],[10,"Ghana"],[9,"Senegal"],[9,"Ivory Coast","cote divoire"],[5,"Algeria"],[3,"Morocco"],[2,"Tunisia"],[2,"South Africa"],[2,"Zambia"],[1,"DR Congo","zaire|democratic republic of congo|drc"],[.1,"Ethiopia"],[.06,"Sudan"],[.08,"Republic of the Congo","congo brazzaville|congo"]]},
+ { q: "Name a player who has scored 100 Premier League goals", note: "Anyone in the 100 club.", people: true, a: [
+  [15,"Alan Shearer"],[12,"Harry Kane"],[12,"Wayne Rooney"],[10,"Mohamed Salah","mo salah"],[8,"Thierry Henry"],[6,"Sergio Agüero","kun"],[5,"Frank Lampard"],[4,"Erling Haaland"],[2,"Andy Cole","andrew cole"],[2,"Robbie Fowler"],[2,"Jermain Defoe"],[2,"Jamie Vardy"],[2,"Son Heung-min","son|heung min son"],[2,"Raheem Sterling"],[2,"Steven Gerrard"],[1.5,"Michael Owen"],[1.5,"Robin van Persie","van persie|rvp"],[1.2,"Didier Drogba"],[1,"Peter Crouch"],[.8,"Teddy Sheringham"],[.8,"Romelu Lukaku"],[.6,"Les Ferdinand"],[.6,"Ian Wright"],[.6,"Jimmy Floyd Hasselbaink"],[.6,"Robbie Keane"],[.5,"Nicolas Anelka"],[.4,"Dwight Yorke"],[.4,"Matt Le Tissier","le tissier|le tiss"],[.3,"Emile Heskey"],[.2,"Darren Bent"],[.15,"Dion Dublin"]]},
+ { q: "Name a player who won the men's World Cup with France", note: "Squad members from 1998 or 2018.", people: true, a: [
+  [15,"Kylian Mbappé"],[12,"Zinedine Zidane","zizou"],[8,"Thierry Henry"],[8,"Antoine Griezmann"],[6,"Paul Pogba"],[4,"Hugo Lloris"],[4,"Didier Deschamps"],[4,"N'Golo Kanté","ngolo kante"],[3,"Raphaël Varane"],[3,"Olivier Giroud"],[3,"Fabien Barthez"],[2,"Patrick Vieira"],[2,"Lilian Thuram"],[2,"Emmanuel Petit"],[2,"Marcel Desailly"],[1.5,"Benjamin Pavard"],[1,"Blaise Matuidi"],[1,"Samuel Umtiti"],[1,"Lucas Hernandez"],[1,"Ousmane Dembélé"],[1,"Bixente Lizarazu"],[1,"Laurent Blanc"],[1,"Youri Djorkaeff"],[1,"David Trezeguet"],[1,"Robert Pires"],[.5,"Christian Karembeu"],[.4,"Christophe Dugarry"],[.4,"Presnel Kimpembe"],[.4,"Nabil Fekir"],[.3,"Frank Leboeuf"],[.3,"Corentin Tolisso"],[.3,"Thomas Lemar"],[.3,"Benjamin Mendy"],[.3,"Steve Mandanda"],[.2,"Alphonse Areola"],[.2,"Steven Nzonzi"],[.2,"Adil Rami"],[.2,"Florian Thauvin"],[.2,"Djibril Sidibé"],[.2,"Stéphane Guivarc'h","guivarch"],[.1,"Bernard Lama"],[.1,"Alain Boghossian"],[.1,"Vincent Candela"],[.05,"Bernard Diomède"],[.03,"Lionel Charbonnier"]]},
+ { q: "Name a player who won the men's World Cup with Argentina", note: "Squad members from 1978, 1986 or 2022.", people: true, a: [
+  [30,"Lionel Messi","leo messi"],[15,"Diego Maradona"],[10,"Ángel Di María","di maria"],[6,"Emiliano Martínez","emi martinez|dibu"],[4,"Julián Álvarez"],[3,"Mario Kempes"],[3,"Paulo Dybala"],[3,"Lautaro Martínez","lautaro"],[3,"Enzo Fernández"],[3,"Alexis Mac Allister","mac allister|macallister"],[2,"Rodrigo De Paul","de paul"],[2,"Nicolás Otamendi"],[1,"Cristian Romero","cuti romero"],[1,"Lisandro Martínez","lisandro"],[1,"Nahuel Molina"],[1,"Gonzalo Montiel"],[1,"Leandro Paredes"],[1,"Nicolás Tagliafico"],[1,"Osvaldo Ardiles","ossie ardiles"],[.5,"Papu Gómez","alejandro gomez"],[.5,"Marcos Acuña"],[.5,"Jorge Burruchaga"],[.5,"Jorge Valdano"],[.5,"Daniel Passarella"],[.4,"Ángel Correa"],[.3,"Germán Pezzella"],[.3,"Juan Foyth"],[.3,"Guido Rodríguez"],[.3,"Ricardo Villa","ricky villa"],[.3,"Oscar Ruggeri"],[.2,"Exequiel Palacios"],[.2,"Thiago Almada"],[.2,"Franco Armani"],[.2,"Gerónimo Rulli"],[.2,"Nery Pumpido"],[.2,"Ubaldo Fillol"],[.2,"José Luis Brown"],[.1,"Leopoldo Luque"],[.1,"Daniel Bertoni"],[.1,"Sergio Batista"],[.05,"Ricardo Giusti"],[.03,"Julio Olarticoechea"],[.05,"René Houseman"],[.05,"Alberto Tarantini"]]},
+ { q: "Name a club that has won Serie A", note: "Italian champions, any era up to 2025.", a: [
+  [35,"Juventus","juve"],[20,"AC Milan","milan"],[20,"Inter Milan","inter|internazionale"],[8,"Napoli"],[5,"Roma","as roma"],[4,"Lazio"],[1.5,"Fiorentina"],[1.5,"Torino"],[1,"Bologna"],[1,"Sampdoria"],[.5,"Genoa"],[.4,"Cagliari"],[.4,"Hellas Verona","verona"],[.2,"Pro Vercelli"],[.05,"Casale"]]}
+];
+const MORE_QS = [
+ { q: "Name a club that won the League Cup between 1990 and 2025", note: "Finals from 1990 to 2025 inclusive.", a: [
+  [22,"Manchester City","man city"],[20,"Manchester United","man utd|man united|man u"],[18,"Liverpool"],[14,"Chelsea"],[5,"Newcastle United","newcastle"],[4,"Tottenham Hotspur","tottenham|spurs"],[3.5,"Arsenal"],[3,"Leicester City","leicester"],[2.5,"Aston Villa","villa"],[1.5,"Swansea City","swansea"],[1.2,"Birmingham City","birmingham"],[1,"Blackburn Rovers","blackburn"],[.8,"Middlesbrough","boro"],[.6,"Nottingham Forest","forest"],[.3,"Sheffield Wednesday","sheff wed|sheffield wed"]]},
+ { q: "Name a club that played in an FA Cup final between 2000 and 2025", note: "Winners or runners-up.", a: [
+  [18,"Chelsea"],[17,"Arsenal"],[15,"Manchester United","man utd|man united|man u"],[14,"Manchester City","man city"],[10,"Liverpool"],[4,"Crystal Palace","palace"],[3,"Leicester City","leicester"],[2,"Aston Villa","villa"],[2,"Everton"],[1.5,"West Ham United","west ham"],[1.5,"Portsmouth","pompey"],[1.2,"Watford"],[1,"Wigan Athletic","wigan"],[.8,"Southampton","saints"],[.6,"Stoke City","stoke"],[.5,"Hull City","hull"],[.3,"Cardiff City","cardiff"],[.2,"Millwall"]]},
+ { q: "Name a club that played in La Liga in 2024–25", note: "The 20 clubs in Spain's top flight that season.", a: [
+  [30,"Real Madrid"],[28,"Barcelona","barca"],[12,"Atlético Madrid","atletico|atleti"],[4,"Sevilla"],[3,"Athletic Bilbao","athletic club|bilbao"],[3,"Villarreal"],[3,"Valencia"],[2.5,"Real Sociedad","la real"],[2,"Real Betis","betis"],[2,"Girona"],[1,"Celta Vigo","celta"],[.8,"Getafe"],[.8,"Osasuna"],[.8,"Mallorca","real mallorca"],[.8,"Espanyol"],[.6,"Rayo Vallecano","rayo"],[.5,"Alavés","deportivo alaves"],[.5,"Las Palmas"],[.4,"Real Valladolid","valladolid"],[.3,"Leganés"]]},
+ { q: "Name a club that played in Serie A in 2024–25", note: "The 20 clubs in Italy's top flight that season.", a: [
+  [22,"Juventus","juve"],[20,"Inter Milan","inter|internazionale"],[18,"AC Milan","milan"],[12,"Napoli"],[8,"Roma","as roma"],[4,"Lazio"],[3,"Atalanta"],[2.5,"Fiorentina"],[1.5,"Bologna"],[1,"Torino"],[.8,"Como"],[.8,"Genoa"],[.8,"Parma"],[.6,"Udinese"],[.6,"Cagliari"],[.6,"Monza"],[.5,"Hellas Verona","verona"],[.5,"Lecce"],[.5,"Empoli"],[.3,"Venezia"]]},
+ { q: "Name a club that played in the Bundesliga in 2024–25", note: "The 18 clubs in Germany's top flight that season.", a: [
+  [35,"Bayern Munich","bayern|bayern munchen"],[20,"Borussia Dortmund","dortmund|bvb"],[12,"Bayer Leverkusen","leverkusen"],[8,"RB Leipzig","leipzig"],[4,"Eintracht Frankfurt","frankfurt"],[3,"VfB Stuttgart","stuttgart"],[2.5,"Borussia Mönchengladbach","gladbach|monchengladbach"],[2,"Wolfsburg"],[2,"Werder Bremen","bremen|werder"],[1.5,"Union Berlin"],[1.2,"St. Pauli","st pauli|sankt pauli"],[1,"Freiburg"],[.8,"Hoffenheim"],[.8,"Mainz","mainz 05"],[.6,"Augsburg"],[.5,"Bochum"],[.4,"Heidenheim"],[.3,"Holstein Kiel","kiel"]]},
+ { q: "Name a player in Brazil's 2002 World Cup-winning squad", note: "Any of the 23 squad members.", people: true, a: [
+  [30,"Ronaldo Nazário","ronaldo|r9"],[14,"Ronaldinho"],[10,"Rivaldo"],[8,"Roberto Carlos"],[6,"Cafu"],[4,"Kaká"],[2,"Lúcio"],[2,"Gilberto Silva","gilberto"],[1.5,"Marcos"],[1.5,"Dida"],[1,"Denílson"],[.8,"Edmílson"],[.8,"Roque Júnior"],[.8,"Kléberson"],[.8,"Juninho Paulista","juninho"],[.5,"Juliano Belletti","belletti"],[.3,"Rogério Ceni","ceni"],[.3,"Edílson"],[.2,"Vampeta"],[.2,"Luizão"],[.12,"Júnior"],[.1,"Ricardinho"],[.05,"Anderson Polga","polga"]]},
+ { q: "Name a player in Spain's 2010 World Cup-winning squad", note: "Any of the 23 squad members.", people: true, a: [
+  [16,"Andrés Iniesta"],[14,"Xavi"],[10,"Iker Casillas"],[9,"Sergio Ramos"],[8,"David Villa"],[8,"Fernando Torres"],[6,"Carles Puyol"],[5,"Gerard Piqué"],[4,"Xabi Alonso"],[3,"Sergio Busquets"],[3,"Cesc Fàbregas","cesc"],[2.5,"David Silva"],[2,"Pedro"],[1,"Juan Mata"],[.8,"Pepe Reina"],[.8,"Jesús Navas"],[.5,"Víctor Valdés"],[.5,"Álvaro Arbeloa"],[.5,"Joan Capdevila"],[.5,"Fernando Llorente"],[.2,"Javi Martínez"],[.2,"Raúl Albiol"],[.1,"Carlos Marchena"]]},
+ { q: "Name a player in Germany's 2014 World Cup-winning squad", note: "Any of the 23 squad members.", people: true, a: [
+  [14,"Thomas Müller","mueller"],[12,"Manuel Neuer"],[10,"Mario Götze","goetze"],[8,"Toni Kroos"],[8,"Bastian Schweinsteiger"],[7,"Philipp Lahm"],[6,"Mesut Özil","oezil"],[6,"Miroslav Klose"],[4,"Mats Hummels"],[4,"Jérôme Boateng"],[3,"Lukas Podolski"],[3,"Sami Khedira"],[2,"André Schürrle","schuerrle"],[2,"Per Mertesacker"],[1,"Julian Draxler"],[.8,"Benedikt Höwedes","howedes|hoewedes"],[.5,"Shkodran Mustafi"],[.5,"Christoph Kramer"],[.2,"Roman Weidenfeller"],[.2,"Kevin Grosskreutz","großkreutz"],[.15,"Matthias Ginter"],[.1,"Ron-Robert Zieler"],[.08,"Erik Durm"]]},
+ { q: "Name a player in Italy's 2006 World Cup-winning squad", note: "Any of the 23 squad members.", people: true, a: [
+  [14,"Gianluigi Buffon","gigi buffon"],[12,"Andrea Pirlo"],[10,"Francesco Totti"],[10,"Fabio Cannavaro"],[8,"Alessandro Del Piero","del piero"],[6,"Gennaro Gattuso"],[5,"Marco Materazzi"],[4,"Fabio Grosso"],[4,"Luca Toni"],[3,"Alessandro Nesta"],[3,"Daniele De Rossi","de rossi"],[3,"Filippo Inzaghi","pippo inzaghi"],[2,"Gianluca Zambrotta"],[1.5,"Alberto Gilardino"],[1,"Mauro Camoranesi"],[.8,"Andrea Barzagli"],[.6,"Vincenzo Iaquinta"],[.5,"Simone Perrotta"],[.3,"Massimo Oddo"],[.3,"Angelo Peruzzi"],[.2,"Cristian Zaccardo"],[.1,"Simone Barone"],[.06,"Marco Amelia"]]},
+ { q: "Name a club that has been champions of France", note: "Since the professional league began in 1932, up to 2025.", a: [
+  [40,"Paris Saint-Germain","psg|paris sg"],[14,"Marseille","olympique marseille|om"],[12,"Lyon","olympique lyonnais"],[10,"Monaco","as monaco"],[6,"Lille","losc"],[4,"Saint-Étienne","st etienne"],[3,"Bordeaux"],[2.5,"Nantes"],[2,"Montpellier"],[1.5,"Nice","ogc nice"],[1.2,"Lens","rc lens"],[1,"Auxerre"],[.8,"Reims","stade de reims"],[.5,"Strasbourg"],[.3,"Sochaux"],[.1,"Sète"],[.08,"RC Paris","racing paris|racing club de paris"],[.06,"Roubaix-Tourcoing","co roubaix tourcoing"],[.05,"Olympique Lillois"]]},
+ { q: "Name a player in England's Euro 2022-winning squad", note: "Any of the Lionesses' 23 squad members.", people: true, a: [
+  [14,"Leah Williamson"],[12,"Beth Mead"],[10,"Alessia Russo"],[10,"Chloe Kelly"],[9,"Lucy Bronze"],[8,"Mary Earps"],[6,"Ella Toone"],[5,"Keira Walsh"],[4,"Millie Bright"],[4,"Lauren Hemp"],[3,"Ellen White"],[3,"Georgia Stanway"],[2,"Fran Kirby"],[2,"Rachel Daly"],[2,"Hannah Hampton"],[1.5,"Alex Greenwood"],[1,"Jill Scott"],[.8,"Nikita Parris"],[.5,"Jess Carter"],[.4,"Ellie Roebuck"],[.3,"Bethany England","beth england"],[.2,"Demi Stokes"],[.1,"Lotte Wubben-Moy","wubben moy"]]},
+ { q: "Name a player in Leicester City's 2015–16 title-winning squad", note: "First-team squad members that season.", people: true, a: [
+  [25,"Jamie Vardy"],[18,"Riyad Mahrez"],[14,"N'Golo Kanté","ngolo kante"],[8,"Kasper Schmeichel"],[6,"Wes Morgan"],[4,"Danny Drinkwater"],[3,"Robert Huth"],[3,"Shinji Okazaki"],[2,"Christian Fuchs"],[2,"Marc Albrighton"],[1.5,"Danny Simpson"],[1.2,"Leonardo Ulloa"],[1,"Andy King"],[.8,"Jeffrey Schlupp"],[.6,"Demarai Gray"],[.4,"Ben Chilwell"],[.3,"Nathan Dyer"],[.3,"Mark Schwarzer"],[.2,"Daniel Amartey"],[.2,"Marcin Wasilewski"],[.15,"Andrej Kramarić"],[.12,"Ritchie De Laet","de laet"],[.1,"Gökhan Inler"],[.05,"Yohan Benalouane"]]},
+ { q: "Name a country that played at Euro 2024", note: "Any of the 24 teams at the finals in Germany.", a: [
+  [12,"Spain"],[12,"England"],[11,"Germany"],[10,"France"],[8,"Portugal"],[6,"Netherlands","holland"],[6,"Italy"],[4,"Belgium"],[3,"Croatia"],[3,"Scotland"],[2.5,"Turkey","turkiye"],[2,"Switzerland"],[2,"Denmark"],[1.5,"Austria"],[1.5,"Poland"],[1.2,"Ukraine"],[1,"Georgia"],[1,"Serbia"],[1,"Hungary"],[.8,"Czech Republic","czechia"],[.8,"Romania"],[.8,"Albania"],[.6,"Slovakia"],[.5,"Slovenia"]]},
+ { q: "Name a country that played at the 2022 men's World Cup", note: "Any of the 32 teams at the finals in Qatar.", a: [
+  [12,"Argentina"],[11,"France"],[9,"Brazil"],[8,"England"],[6,"Croatia"],[6,"Morocco"],[5,"Qatar"],[5,"Portugal"],[4,"Germany"],[4,"Spain"],[3,"Netherlands","holland"],[2.5,"Belgium"],[2,"United States","usa|us|america"],[2,"Japan"],[2,"Wales"],[1.5,"Saudi Arabia"],[1.5,"South Korea","korea|korea republic"],[1.5,"Senegal"],[1.2,"Mexico"],[1.2,"Australia"],[1,"Uruguay"],[1,"Poland"],[1,"Ghana"],[1,"Cameroon"],[.8,"Denmark"],[.8,"Switzerland"],[.8,"Serbia"],[.8,"Canada"],[.6,"Iran"],[.6,"Ecuador"],[.5,"Costa Rica"],[.4,"Tunisia"]]}
+];
+const BANK = [...NEW_QS, ...CLASSIC_QS, ...MORE_QS];
+
+// Two-line story behind each question's Top Bins answer
+const TOP_WHY = {
+ "Name a country that played at a men's World Cup before 2026": "Played one World Cup match, a 6–0 defeat to Hungary at France 1938. It was the first Asian team ever to play at a World Cup, and the country is now Indonesia.",
+ "Name a Liverpool player who played in the 2005 or 2019 Champions League final": "Started the 2005 final in Istanbul at left-back. He was nearly taken off at half-time at 3–0 down, stayed on, and played his part in the comeback.",
+ "Name a Manchester United player who played in the 1999 or 2008 Champions League final": "Started the 1999 final in Barcelona on the left wing, with Beckham moved into the middle. He was replaced by Teddy Sheringham, who scored the equaliser.",
+ "Name a club that has been champions of England": "Won the first ever Football League title in 1888–89 without losing a game. They took the FA Cup that season too, the original double.",
+ "Name a club that has played in the Scottish Premiership": "Spent seven straight seasons in the top flight, from 2014–15 to 2020–21. Their home ground holds only about 6,000 fans.",
+ "Name a country that has won Olympic gold in men's football": "Won the 1904 tournament in St. Louis, represented by Galt FC from Ontario. Only three club teams took part.",
+ "Name a national team that belongs to UEFA": "Left the Asian Football Confederation and joined UEFA in 2002. Away trips there can mean flights of five hours or more for European teams.",
+ "Name an African international who has won the Premier League": "The South African was a utility man in Ferguson's Manchester United squads from 1999 to 2006. Easy to forget among all the big names.",
+ "Name a country that has reached a men's Euros semi-final": "Reached the 1964 semi-finals and lost to Spain after extra time. They then beat Denmark to finish third.",
+ "Name a member of Arsenal's 2003–04 Invincibles squad": "Arsenal's back-up goalkeeper during the unbeaten season. He later moved on to Aston Villa and Manchester City.",
+ "Name a man who has managed England": "Took caretaker charge for seven games in 1974 after Alf Ramsey was sacked. He'd won the league as Manchester City manager in 1968.",
+ "Name a club that has won the UEFA Cup or Europa League": "Won the 1981 UEFA Cup under Bobby Robson, beating AZ '67 over two legs. Robson went on to manage England.",
+ "Name a player who won the Champions League with Real Madrid since 2014": "Was Real Madrid's league goalkeeper in 2013–14 while Iker Casillas played the cup games. He was in the squad that won La Décima in Lisbon.",
+ "Name a club that has played in the Premier League": "Spent one season in the Premier League, 1993–94, and won only five of their 42 games. They conceded 100 goals.",
+ "Name a club that has won the European Cup or Champions League": "Beat Barcelona on penalties in the 1986 final in Seville. Goalkeeper Helmuth Duckadam saved all four of Barcelona's penalties.",
+ "Name a winner of the men's Ballon d'Or": "The Hungarian forward won it in 1967 while playing for Ferencváros. He spent his whole club career there.",
+ "Name a player who has played for both Barcelona and Real Madrid": "A Spanish winger who won titles with Barcelona in the 1950s, then crossed to Real Madrid in 1961. One of the earliest players to make the switch.",
+ "Name a player who scored in a men's World Cup final": "Gave Czechoslovakia the lead against Italy in the 1934 final. Italy came back to win 2–1 in extra time.",
+ "Name a Premier League Golden Boot winner": "Shared the 1997–98 Golden Boot with Michael Owen and Chris Sutton on 18 goals. He was playing for Coventry City.",
+ "Name a country that has hosted the men's World Cup": "Hosted the 1962 World Cup only two years after the most powerful earthquake ever recorded. Brazil won it, and Chile finished third.",
+ "Name a ground that has been a Premier League club's home stadium": "Home of Oldham Athletic in the Premier League's first two seasons. It's known as one of the coldest grounds in England.",
+ "Name a country that has won the Africa Cup of Nations": "Won the 1970 tournament on home soil in Khartoum. Sudan was also one of the founding members of CAF.",
+ "Name a player who has scored 100 Premier League goals": "Scored over 100 Premier League goals for Manchester United, Coventry and Aston Villa. He also had spells playing at centre-back.",
+ "Name a player who won the men's World Cup with France": "France's third-choice goalkeeper in 1998, he never played a minute. He still went home with a winner's medal.",
+ "Name a player who won the men's World Cup with Argentina": "Played left-back in the 1986 final in Mexico City. In the quarter-final he headed a late Gary Lineker chance off the line against England.",
+ "Name a club that has won Serie A": "Won the Italian championship in 1913–14. The Piedmont club has spent the decades since in the lower leagues."
+};
+Object.assign(TOP_WHY, {
+ "Name a club that won the League Cup between 1990 and 2025": "Won the 1991 final as a second-tier club, beating Manchester United 1–0 at Wembley. John Sheridan scored the goal.",
+ "Name a club that played in an FA Cup final between 2000 and 2025": "Reached the 2004 final as a second-tier club under player-manager Dennis Wise. They lost 3–0 to Manchester United in Cardiff.",
+ "Name a club that played in La Liga in 2024–25": "Came up as second-tier champions and won 1–0 away at Barcelona in December 2024. They still went straight back down.",
+ "Name a club that played in Serie A in 2024–25": "Won promotion through the 2024 play-offs and lasted one season. Their Stadio Penzo sits on an island, and many fans arrive by boat.",
+ "Name a club that played in the Bundesliga in 2024–25": "This was their first ever Bundesliga season. They were the first club from Schleswig-Holstein, Germany's northernmost state, to reach it.",
+ "Name a player in Brazil's 2002 World Cup-winning squad": "A Grêmio centre-back who was a squad player behind Lúcio, Roque Júnior and Edmílson. He went on to spend nine years at Sporting CP.",
+ "Name a player in Spain's 2010 World Cup-winning squad": "A back-up centre-back behind Puyol and Piqué. He went more than 50 Spain games in a row without losing, a world record at the time.",
+ "Name a player in Germany's 2014 World Cup-winning squad": "The young Borussia Dortmund full-back was in the squad of 23 in Brazil. He never played a minute of the tournament.",
+ "Name a player in Italy's 2006 World Cup-winning squad": "Italy's third-choice goalkeeper behind Buffon and Peruzzi. He never played a minute in Germany but went home a world champion.",
+ "Name a club that has been champions of France": "Won the first professional French championship in 1932–33. In 1944 the club merged with a local rival to form today's Lille.",
+ "Name a player in England's Euro 2022-winning squad": "The Arsenal defender was a squad player at the tournament. Afterwards she led the Lionesses' open letter asking for every girl to get football at school.",
+ "Name a player in Leicester City's 2015–16 title-winning squad": "The Tunisian defender arrived from Atalanta in 2015 and played only a handful of league games. He was loaned to Fiorentina in January.",
+ "Name a country that played at Euro 2024": "Drew all three group games, then held Portugal to 0–0 in the last 16. They went out on penalties without losing in normal time.",
+ "Name a country that played at the 2022 men's World Cup": "Beat the eventual finalists France 1–0 in their last group game. It wasn't enough, and they still went out."
+});
+for (const Q of BANK) Q.why = TOP_WHY[Q.q] || "";
+
+// ================= Topics (one per question, in bank order) =================
+const TOPICS = ["World Cup nations", "Liverpool in Europe", "United in Europe", "English champions", "Scottish football", "Olympic football", "European nations", "African stars", "The Euros", "The Invincibles", "England managers", "Europa League", "Real Madrid", "Premier League clubs", "European champions", "Ballon d'Or", "El Clásico", "World Cup finals", "Golden Boot", "World Cup hosts", "Stadiums", "AFCON", "The 100 club", "France", "Argentina", "Serie A", "League Cup", "FA Cup finals", "La Liga", "Serie A clubs", "Bundesliga", "Brazil 2002", "Spain 2010", "Germany 2014", "Italy 2006", "French champions", "The Lionesses", "Leicester 2016", "Euro 2024", "Qatar 2022"];
+BANK.forEach((Q, i) => { Q.topic = TOPICS[i] || "Football"; });
+
+// ================= Rarity tiers (Krillion-style points: 10 / 15 / 30 / 60 / 85 / 100) =================
+const TIERS = [
+ { id: "top",    name: "Top Bins",          pts: 100, color: "#ffc53d", emoji: "🎯", th: "rarest only", line: "The single rarest answer on the board. Picked out the top corner." },
+ { id: "bottom", name: "Bottom Corner",     below: .5,  pts: 85, color: "#7ee08a", emoji: "⚽", th: "< 0.5%", line: "A deep cut. Low, hard and inside the post." },
+ { id: "finger", name: "Fingertip Save",    below: 2,   pts: 60, color: "#6fc3ff", emoji: "🧤", th: "< 2%", line: "A proper strike. The keeper only just got a glove to it." },
+ { id: "tame",   name: "Tame Effort",       below: 6,   pts: 30, color: "#efe8cf", emoji: "🟨", th: "< 6%", line: "On target, but the keeper read it all the way." },
+ { id: "scuff",  name: "Scuffed It",        below: 15,  pts: 15, color: "#d39a5b", emoji: "🟧", th: "< 15%", line: "A popular pick. It trickled into the keeper's arms." },
+ { id: "ground", name: "Kicked the Ground", below: 1e9, pts: 10, color: "#a07a52", emoji: "🟫", th: "15%+", line: "The answer everyone blurts out. The divot went further than the ball." }
+];
+const ROWZ = { id: "rowz", name: "Row Z", pts: 0, color: "#ff7a6b", emoji: "❌", th: "no answer", line: "No answer on the board. That one's in the car park." };
+const ALL_TIERS = [...TIERS, ROWZ];
+const tierById = id => ALL_TIERS.find(t => t.id === id);
+const MAXPTS = 700, TIME = 20, RING = 119.4;
+const ROARS = [[600, "Bedlam"], [450, "Bouncing"], [300, "Rocking"], [150, "Warming up"], [0, "Quiet"]];
+const roarWord = p => ROARS.find(r => p >= r[0])[1];
+
+// ================= Matching =================
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+  .replace(/&/g, " and ").replace(/['’`]/g, "").replace(/[^a-z0-9 ]/g, " ")
+  .replace(/\b(fc|afc|cf|the|sc)\b/g, " ").replace(/\s+/g, "");
+for (const Q of BANK) {
+  Q.list = Q.a.map(([pct, name, al]) => {
+    const keys = new Set([norm(name)]);
+    (al || "").split("|").filter(Boolean).forEach(x => keys.add(norm(x)));
+    if (Q.people) { const w = name.split(/\s+/); if (w.length > 1) keys.add(norm(w[w.length - 1])); }
+    return { pct, name, keys: [...keys].filter(Boolean) };
+  });
+  // a bare surname never steals a match from an answer whose whole name it is (Júnior vs Roque Júnior)
+  const full = {}; Q.list.forEach(it => { full[it.keys[0]] = it; });
+  Q.list.forEach(it => { it.keys = it.keys.filter(k => !full[k] || full[k] === it); });
+  Q.rarest = Q.list.reduce((m, it) => it.pct < m.pct ? it : m, Q.list[0]);
+}
+const tierOf = (Q, it) => it === Q.rarest ? TIERS[0] : TIERS.slice(1).find(t => it.pct < t.below);
+function lev(a, b) {
+  if (Math.abs(a.length - b.length) > 3) return 9;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+const exactMatch = (Q, raw) => { const s = norm(raw); return s ? Q.list.find(it => it.keys.includes(s)) || null : null; };
+function suggest(Q, raw) {
+  const s = norm(raw);
+  const tol = s.length >= 11 ? 3 : s.length >= 7 ? 2 : s.length >= 4 ? 1 : 0;
+  if (!tol) return null;
+  let best = null, bd = 99;
+  for (const it of Q.list) for (const k of it.keys) {
+    let d = lev(s, k);
+    if (k.startsWith(s)) d = Math.min(d, 1);
+    if (d < bd) { bd = d; best = it; }
+  }
+  return bd <= tol ? best : null;
+}
+const fmtPct = p => p >= 10 ? p.toFixed(0) + "%" : p >= 1 ? (+p.toFixed(1)) + "%" : (+p.toFixed(2)) + "%";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const num = n => n.toLocaleString("en-GB");
+
+// ================= Daily set =================
+const EPOCH = new Date(2026, 10, 15);
+const today = new Date();
+const dayNo = Math.round((new Date(today.getFullYear(), today.getMonth(), today.getDate()) - EPOCH) / 864e5) + 1;
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffled(arr, r) { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+// Each day takes the next 7 from a shuffled run through the whole bank; every run is shuffled differently.
+const runOrder = {};
+function runOf(c) {
+  if (runOrder[c]) return runOrder[c];
+  let o = shuffled([...BANK.keys()], rng(7001 + c * 97));
+  if (c > 0) { const recent = new Set(runOf(c - 1).slice(-20)); o = [...o.filter(q => !recent.has(q)), ...o.filter(q => recent.has(q))]; } // keep recent questions away from the start of the next run
+  return (runOrder[c] = o);
+}
+function dailySet(k) {
+  const N = BANK.length, out = [];
+  for (let i = 0; out.length < 7 && i < N; i++) {
+    const pos = Math.max(0, (k - 1) * 7 + i), q = runOf(Math.floor(pos / N))[pos % N];
+    if (!out.includes(q)) out.push(q);
+  }
+  return out;
+}
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const DAY_KEY = "topbins:v4:day:" + dayNo, STATS_KEY = "topbins:v3:stats";
+
+// ================= Career: streak, rank, badges =================
+const RANKS = [[0, "Sunday League"], [500, "Non-League"], [1500, "League Two"], [3000, "League One"], [5000, "Championship"], [8000, "Premier League"], [12000, "Champions League"], [18000, "World Class"], [26000, "Ballon d'Or"]];
+function rankInfo(total) {
+  let i = 0; while (i + 1 < RANKS.length && total >= RANKS[i + 1][0]) i++;
+  const next = RANKS[i + 1];
+  return { name: RANKS[i][1], next: next ? next[1] : null, pct: next ? (total - RANKS[i][0]) / (next[0] - RANKS[i][0]) : 1, toGo: next ? next[0] - total : 0 };
+}
+const BADGES = [
+ { id: "debut", name: "Debut", how: "finish your first daily" },
+ { id: "goal", name: "Off the mark", how: "score your first goal" },
+ { id: "top", name: "Top Bins", how: "find a Top Bins answer" },
+ { id: "hat", name: "Hat-trick", how: "score 3 goals in one day" },
+ { id: "clean", name: "No divots", how: "answer all 7 without Kicking the Ground" },
+ { id: "c300", name: "300 club", how: "score 300 or more in a day" },
+ { id: "c500", name: "500 club", how: "score 500 or more in a day" },
+ { id: "s3", name: "3-day streak", how: "play 3 days in a row" },
+ { id: "s7", name: "7-day streak", how: "play 7 days in a row" },
+ { id: "col5", name: "Collector", how: "find 5 different Top Bins answers" }
+];
+function loadStats() {
+  const s = store.get(STATS_KEY) || {};
+  return { streak: s.streak || 0, last: s.last == null ? null : s.last, best: s.best || 0, played: s.played || 0, total: s.total || 0, goals: s.goals || 0, hist: s.hist || {}, tops: s.tops || [], badges: s.badges || {} };
+}
+const liveStreak = s => (s.last === dayNo || s.last === dayNo - 1) ? s.streak : 0;
+function recordDaily() {
+  const st = loadStats(), fresh = [];
+  if (st.last === dayNo) return { st, fresh };
+  const pts = totalPts(), tiers = G.answers.map(a => a.tier), goals = tiers.filter(t => t === "top" || t === "bottom").length;
+  st.streak = st.last === dayNo - 1 ? st.streak + 1 : 1;
+  st.last = dayNo; st.played++; st.best = Math.max(st.best, pts); st.total += pts; st.goals += goals;
+  st.hist[dayNo] = pts;
+  Object.keys(st.hist).forEach(k => { if (+k < dayNo - 40) delete st.hist[k]; });
+  G.answers.forEach((a, i) => { if (a.tier === "top") { const q = BANK[G.qs[i]].q; if (!st.tops.includes(q)) st.tops.push(q); } });
+  const give = (id, ok) => { if (ok && !st.badges[id]) { st.badges[id] = dayNo; fresh.push(id); } };
+  give("debut", true); give("goal", st.goals > 0); give("top", tiers.includes("top")); give("hat", goals >= 3);
+  give("clean", !tiers.includes("ground") && !tiers.includes("rowz")); give("c300", pts >= 300); give("c500", pts >= 500);
+  give("s3", st.streak >= 3); give("s7", st.streak >= 7); give("col5", st.tops.length >= 5);
+  store.set(STATS_KEY, st);
+  return { st, fresh };
+}
+
+// ================= Sound (synthesised in the browser, no audio files) =================
+const SFX = (() => {
+  let ac = null, master = null, nb = null, amb = null, muted = false;
+  try { muted = localStorage.getItem("topbins:muted") === "1"; } catch (e) {}
+  const live = () => ac && !muted;
+  function unlock() {
+    if (ac) { if (ac.state === "suspended") { try { ac.resume(); } catch (e) {} } return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    try {
+      ac = new AC();
+      master = ac.createGain(); master.gain.value = muted ? 0 : .85;
+      const comp = ac.createDynamicsCompressor(); master.connect(comp); comp.connect(ac.destination);
+      nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource(); src.buffer = nb; src.loop = true;
+      const f = ac.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 520; f.Q.value = .6;
+      amb = ac.createGain(); amb.gain.value = .0001;
+      src.connect(f); f.connect(amb); amb.connect(master); src.start();
+    } catch (e) { ac = null; }
+  }
+  function tone(type, f0, f1, dur, peak, delay) {
+    const t = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .05);
+  }
+  function nz(type, f0, f1, q, attack, dur, peak, delay) {
+    const t = ac.currentTime + (delay || 0), s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = nb; s.loop = true; f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + attack + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + attack); g.gain.exponentialRampToValueAtTime(.0001, t + attack + dur);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 1.5); s.stop(t + attack + dur + .1);
+  }
+  function blast(delay, len) {
+    const t = ac.currentTime + delay, o = ac.createOscillator(), l = ac.createOscillator(), lg = ac.createGain(), g = ac.createGain(), f = ac.createBiquadFilter();
+    o.type = "square"; o.frequency.value = 2350; l.frequency.value = 34; lg.gain.value = 90; l.connect(lg); lg.connect(o.frequency);
+    f.type = "bandpass"; f.frequency.value = 2400; f.Q.value = 3;
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.13, t + .02); g.gain.setValueAtTime(.13, t + len - .05); g.gain.exponentialRampToValueAtTime(.0001, t + len);
+    o.connect(f); f.connect(g); g.connect(master); o.start(t); l.start(t); o.stop(t + len + .05); l.stop(t + len + .05);
+  }
+  const safe = fn => (...a) => { if (!live()) return; try { fn(...a); } catch (e) {} };
+  return {
+    unlock,
+    get muted() { return muted; },
+    toggle() { muted = !muted; try { localStorage.setItem("topbins:muted", muted ? "1" : "0"); } catch (e) {} if (master) master.gain.setTargetAtTime(muted ? 0 : .85, ac.currentTime, .03); return muted; },
+    // the boot-on-leather thump, harder for better strikes; a dull thud of turf for Kicked the Ground
+    kick: safe(tier => {
+      if (tier === "ground") { tone("sine", 95, 38, .22, .7); nz("lowpass", 500, 180, .7, .004, .16, .5); return; }
+      const p = { scuff: .45, tame: .7, finger: .9, bottom: 1, top: 1.1, rowz: .95 }[tier] || .8;
+      tone("sine", 190, 48, .2, .95 * p); tone("triangle", 900, 180, .05, .28 * p); nz("bandpass", 2200, 900, .8, .002, .06, .5 * p);
+    }),
+    net: safe(() => { nz("highpass", 2600, 5200, .5, .01, .32, .3); nz("bandpass", 900, 500, .9, .005, .12, .2); }),
+    thud: safe(v => { tone("sine", 140, 60, .12, .6 * v); nz("bandpass", 1400, 700, 1, .002, .05, .3 * v); }),
+    roar: safe(v => { nz("bandpass", 600, 1150, .45, .12, 2.6, .5 * v); nz("bandpass", 1500, 2300, .7, .2, 2.1, .2 * v); nz("lowpass", 300, 220, .5, .1, 2.4, .28 * v); }),
+    ooh: safe(() => { nz("bandpass", 520, 330, .9, .08, .9, .34); nz("bandpass", 1100, 700, 1.2, .08, .7, .1); }),
+    groan: safe(() => { nz("bandpass", 380, 210, 1, .1, 1.1, .24); }),
+    whistle: safe(n => { (n >= 3 ? [[0, .22], [.34, .22], [.68, .75]] : [[0, .38]]).forEach(([d, len]) => blast(d, len)); }),
+    tick: safe(sec => { const f = sec <= 2 ? 1320 : 990; tone("square", f, f, .05, .07); }),
+    wrong: safe(() => { tone("sawtooth", 170, 150, .12, .12); tone("sawtooth", 130, 110, .16, .12, .13); }),
+    stamp: safe(() => { tone("sine", 220, 90, .09, .32); nz("lowpass", 900, 300, .6, .002, .05, .22); }),
+    chime: safe(n => { [523, 659, 784, 1047].slice(0, n).forEach((f, k) => tone("triangle", f, f, .24, .11, k * .09)); }),
+    atmo(a) { if (ac && amb) { try { amb.gain.setTargetAtTime(Math.max(.0001, Math.min(.07, a * .045)), ac.currentTime, .6); } catch (e) {} } }
+  };
+})();
+
+// ================= Game state =================
+let G;
+function startDaily() {
+  const s = store.get(DAY_KEY);
+  G = { mode: "daily", qs: dailySet(dayNo), answers: s && Array.isArray(s.answers) ? s.answers : [], cur: s && s.cur || null, busy: false };
+}
+const totalPts = () => G.answers.reduce((s, a) => s + tierById(a.tier).pts, 0);
+function save(pending) { if (G.mode === "daily") store.set(DAY_KEY, { answers: pending ? [...G.answers, pending] : G.answers, cur: G.cur }); }
+
+const $ = id => document.getElementById(id);
+const panel = $("panel");
+const dateLbl = today.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const dayName = k => new Date(today.getFullYear(), today.getMonth(), today.getDate() - k).toLocaleDateString("en-GB", { weekday: "short" });
+let qTimer = null, autoT = null;
+
+function renderBoard(currentIdx) {
+  $("meta").textContent = `Daily No. ${dayNo} · ${dateLbl}`;
+  $("pips").innerHTML = Array.from({ length: 7 }, (_, i) => {
+    const a = G.answers[i];
+    if (a) { const t = tierById(a.tier); return `<span class="pip done" style="background:${t.color};color:${t.color}" title="Q${i + 1}: ${esc(t.name)}"><span style="color:#10170f">${i + 1}</span></span>`; }
+    return `<span class="pip${i === currentIdx ? " now" : ""}">${i + 1}</span>`;
+  }).join("");
+  const p = totalPts();
+  countTo($("total"), p);
+  $("roarFill").style.width = Math.min(100, p / MAXPTS * 100) + "%";
+  $("roarWord").textContent = roarWord(p);
+  scene.atmoT = Math.max(.12, p / MAXPTS);
+  const st = loadStats(), ls = liveStreak(st), el = $("streak");
+  $("streakN").textContent = ls;
+  el.classList.toggle("hot", st.last === dayNo);
+  el.classList.toggle("risk", st.last === dayNo - 1 && ls > 0);
+  el.title = st.last === dayNo ? `${ls}-day streak. Today's done.` : ls > 0 ? `${ls}-day streak. Play today to keep it.` : "Play today to start a streak";
+}
+function countTo(el, to) {
+  const from = +el.dataset.v || 0; el.dataset.v = to;
+  if (from === to) { el.textContent = num(to); return; }
+  const t0 = performance.now(), dur = 800;
+  const step = now => { const p = Math.min(1, (now - t0) / dur); el.textContent = num(Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)))); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+  setTimeout(() => { el.textContent = num(to); }, dur + 150);
+}
+function setPanel(html) {
+  clearInterval(qTimer); clearTimeout(autoT); scene.urgent = 0;
+  panel.classList.remove("view-in"); panel.innerHTML = html; void panel.offsetWidth; panel.classList.add("view-in");
+  const bars = panel.querySelectorAll("[data-w]"), grow = () => bars.forEach(b => { b.style.width = b.dataset.w + "%"; });
+  requestAnimationFrame(() => requestAnimationFrame(grow)); setTimeout(grow, 300);
+}
+const ladderHTML = () => `<ul class="ladder">${ALL_TIERS.map(t =>
+  `<li style="--c:${t.color}" title="${esc(t.line)}"><span class="sw"></span><span class="nm">${t.name}</span><span class="th">${t.th}</span><span class="pt">${t.pts}</span></li>`).join("")}</ul>`;
+const ansLabel = a => a.name ? esc(a.name) : a.why === "time" ? "Out of time" : "Passed";
+const toTop = () => { if (matchMedia("(max-width: 900px)").matches) window.scrollTo({ top: 0, behavior: REDUCE ? "auto" : "smooth" }); };
+const band = p => p >= 450 ? "g4" : p >= 300 ? "g3" : p >= 150 ? "g2" : "g1";
+function formHTML(st) {
+  return `<div class="form" aria-label="Your last five days">${[4, 3, 2, 1, 0].map(k => {
+    const d = dayNo - k, p = st.hist[d];
+    if (d < 1) return "";
+    const cls = p == null ? (k === 0 ? "today" : "miss") : band(p);
+    return `<span class="fchip ${cls}"><b>${p == null ? (k === 0 ? "?" : "–") : p}</b><small>${k === 0 ? "Today" : dayName(k)}</small></span>`;
+  }).join("")}</div>`;
+}
+function careerHTML(st) {
+  const r = rankInfo(st.total);
+  return `<div class="career">
+    <div><div class="rank-top"><span class="rank-name">${r.name}</span><span class="rank-next">${r.next ? `${num(r.toGo)} pts to ${r.next}` : "Top of the game"}</span></div>
+    <div class="rank-bar"><i data-w="${Math.max(2, r.pct * 100).toFixed(1)}"></i></div></div>
+    ${formHTML(st)}
+  </div>`;
+}
+const chipsHTML = (ids, more) => `<div class="chips">${ids.map(i => `<span class="chip">${esc(BANK[i].topic)}</span>`).join("")}${more ? `<span class="chip more">${more}</span>` : ""}</div>`;
+
+// ---------- Views ----------
+function showIntro() {
+  renderBoard(-1); scene.reset(); scene.cam.zt = .86; scene.mode = "intro"; scene.atmoT = .45;
+  const st = loadStats(), ls = liveStreak(st);
+  const hook = st.played === 0 ? "Seven questions. Twenty seconds each. One shot per question."
+    : ls > 0 ? `Your ${ls}-day streak is on the line. Play today to make it ${ls + 1}.`
+    : "Your streak ended. A new one starts with today's seven.";
+  setPanel(`
+    <span class="eyebrow">Daily No. ${dayNo} · ${dateLbl}</span>
+    <h1>Obvious answers <em>scuff it.</em> Rare ones go top bins.</h1>
+    <p class="hook">${hook}</p>
+    <div class="btn-row"><button class="btn big" id="go">Kick off</button><span class="muted">7 questions · ${TIME}s each · wrong guesses are free</span></div>
+    <p>Every question has lots of right answers. Find the one the fewest fans would think of. Only the single rarest answer on each board hits the top corner.</p>
+    ${st.played ? careerHTML(st) : ""}
+    <div class="topics"><span class="k">Today's teamsheet</span>${chipsHTML(G.qs)}</div>
+    ${ladderHTML()}`);
+  $("go").onclick = () => { SFX.unlock(); SFX.whistle(1); showQuestion(); };
+}
+
+function showQuestion() {
+  const i = G.answers.length;
+  if (i >= 7) return showFinal();
+  const Q = BANK[G.qs[i]];
+  renderBoard(i); scene.reset(); scene.cam.zt = 1; scene.mode = "play";
+  if (!G.cur || G.cur.i !== i) { G.cur = { i, t0: Date.now() }; save(); }
+  const t0 = G.cur.t0, wrong = [];
+  setPanel(`
+    <div class="q-top">
+      <div class="q-meta"><span class="eyebrow">Question ${i + 1} of 7</span><span class="topic">${esc(Q.topic)}</span></div>
+      <span class="ring" id="ring" aria-label="Seconds left"><svg viewBox="0 0 44 44" aria-hidden="true"><circle class="rb" cx="22" cy="22" r="19"/><circle class="rf" id="rf" cx="22" cy="22" r="19"/></svg><b id="clock">${TIME}</b></span>
+    </div>
+    <h2>${esc(Q.q)}</h2>
+    <p class="muted">${esc(Q.note)}</p>
+    <span class="count-chip"><b>${Q.list.length}</b> right answers · <b>1</b> top bins</span>
+    <form class="answer-row" id="f" autocomplete="off">
+      <input id="ans" type="text" placeholder="Type your answer" aria-label="Your answer" autocapitalize="words" spellcheck="false" autocorrect="off" enterkeyhint="go">
+      <button class="btn" type="submit">Shoot</button>
+    </form>
+    <div class="feedback" id="fb" aria-live="assertive"></div>
+    <div class="tries" id="tries"></div>
+    <div class="btn-row"><button class="btn ghost" id="pass" type="button">Pass (Row Z)</button></div>
+    <details class="how"><summary>What each answer is worth</summary>${ladderHTML()}</details>`);
+  const inp = $("ans"), fb = $("fb");
+  if (matchMedia("(min-width: 901px)").matches) inp.focus({ preventScroll: true });
+  let over = false, lastSec = TIME + 1;
+  const end = (hit, raw, why) => { if (over) return; over = true; clearInterval(qTimer); shoot(hit, raw, why); };
+  const tick = () => {
+    const left = TIME - (Date.now() - t0) / 1000;
+    if (left <= 0) return end(null, inp.value, "time");
+    const sec = Math.ceil(left), low = left <= 5;
+    if (sec !== lastSec) { lastSec = sec; $("clock").textContent = sec; if (low) SFX.tick(sec); }
+    $("rf").style.strokeDashoffset = (RING * (1 - left / TIME)).toFixed(1);
+    $("ring").classList.toggle("low", low); scene.urgent = low ? 1 : 0;
+  };
+  tick(); if (!over) qTimer = setInterval(tick, 100);
+  const shake = () => { inp.classList.remove("shake"); void inp.offsetWidth; inp.classList.add("shake"); };
+  const miss = v => {
+    wrong.push(v); SFX.wrong();
+    $("tries").innerHTML = wrong.map(w => `<span>${esc(w)}</span>`).join("");
+    fb.innerHTML = `<p class="bad">“${esc(v)}” isn't on the board. Try again.</p>`;
+    inp.value = ""; shake(); inp.focus({ preventScroll: true });
+  };
+  $("f").onsubmit = e => {
+    e.preventDefault();
+    if (over) return;
+    const v = inp.value.trim();
+    if (!v) return shake();
+    const hit = exactMatch(Q, v);
+    if (hit) return end(hit, v);
+    const s = suggest(Q, v);
+    if (!s) return miss(v);
+    fb.innerHTML = `<div class="suggest"><span>Did you mean <b>${esc(s.name)}</b>?</span><span class="btn-row"><button class="btn sm" type="button" id="yes">Yes, shoot</button><button class="btn ghost sm" type="button" id="no">No</button></span></div>`;
+    $("yes").onclick = () => end(s, v);
+    $("no").onclick = () => miss(v);
+    $("yes").focus({ preventScroll: true });
+  };
+  $("pass").onclick = () => end(null, "", "pass");
+}
+
+function shoot(hit, raw, why) {
+  if (G.busy) return; G.busy = true;
+  const i = G.answers.length, Q = BANK[G.qs[i]];
+  const t = hit ? tierOf(Q, hit) : ROWZ;
+  const ans = { raw: (raw || "").trim(), name: hit ? hit.name : null, pct: hit ? hit.pct : null, tier: t.id, why: hit ? null : (why || "pass") };
+  G.cur = null; save(ans);
+  setPanel(`
+    <span class="eyebrow">Question ${i + 1} of 7</span>
+    <h2>${hit ? esc(hit.name) : why === "time" ? "Out of time" : "Passed"}</h2>
+    <p class="muted">${hit ? "Stepping up to the spot…" : "Panicking at the spot…"}</p>`);
+  toTop();
+  let fin = false;
+  const finish = () => { if (fin) return; fin = true; G.answers.push(ans); G.busy = false; renderBoard(-1); showResult(i, ans); };
+  scene.play(t.id, finish);
+  setTimeout(finish, 9000); // safety net if the animation can't run
+}
+
+const whyBox = Q => Q.why ? `<div class="why"><span class="why-k">Why ${esc(Q.rarest.name)} is Top Bins</span><p>${esc(Q.why)}</p></div>` : "";
+function showResult(i, ans) {
+  const t = tierById(ans.tier), last = i === 6, Q = BANK[G.qs[i]], isTop = ans.tier === "top";
+  let meter = "";
+  if (ans.name) {
+    const M = Q.list.length, rarer = Q.list.filter(x => x.pct < ans.pct).length;
+    const msg = isTop ? `The rarest of all ${M} answers` : rarer === 1 ? `Only 1 of the ${M} answers was rarer` : `${rarer} of the ${M} answers were rarer`;
+    meter = `<div class="rarity">
+      <div class="rarity-top"><span>${esc(ans.name)}</span><span>${fmtPct(ans.pct)} of fans</span></div>
+      <div class="rarity-bar"><i data-w="${Math.max(4, (1 - rarer / Math.max(1, M - 1)) * 100).toFixed(1)}" style="background:${t.color}"></i></div>
+      <span class="rarity-msg">${msg}</span></div>`;
+  }
+  const wait = isTop ? 7500 : 3600;
+  setPanel(`
+    <span class="eyebrow">Question ${i + 1} of 7</span>
+    <div class="stamp" style="--c:${t.color}">${t.name}</div>
+    <div class="ptsbig" style="--c:${t.color}">+<span id="rp">0</span><small>pts</small></div>
+    <p class="muted">${ans.name ? esc(t.line) : ans.why === "time" ? "The clock ran out. That one's in the car park." : "You passed. That one's in the car park."}</p>
+    ${meter}
+    ${isTop ? whyBox(Q) : ""}
+    <div class="auto" aria-hidden="true"><i style="animation-duration:${wait}ms"></i></div>
+    <button class="btn" id="nx">${last ? "Full time" : "Next question"}</button>`);
+  countTo($("rp"), t.pts); SFX.stamp();
+  const go = () => { clearTimeout(autoT); last ? showFinal() : showQuestion(); };
+  $("nx").onclick = go;
+  $("nx").focus({ preventScroll: true });
+  autoT = setTimeout(go, wait);
+}
+
+const CHEV = `<svg class="chev" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 5l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+const GLASS = `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+function showFinal() {
+  const daily = G.mode === "daily";
+  const pts = totalPts(), goals = G.answers.filter(a => a.tier === "top" || a.tier === "bottom").length;
+  let st = loadStats(), fresh = [];
+  const prevTotal = st.total, firstView = daily && st.last !== dayNo;
+  if (firstView) ({ st, fresh } = recordDaily());
+  renderBoard(-1); scene.reset(); scene.fullTime(); scene.cam.zt = .8; scene.mode = "intro";
+  scene.fireworks = pts >= 300 ? pts / MAXPTS : 0;
+  if (firstView || !daily) { SFX.whistle(3); if (fresh.length) SFX.chime(4); }
+  const r0 = rankInfo(prevTotal), r1 = rankInfo(st.total), promoted = firstView && r0.name !== r1.name;
+  const verdict = pts >= 600 ? "Bedlam in the stands. Nobody saw those coming." : pts >= 450 ? "The away end is bouncing. Clinical finishing." : pts >= 300 ? "Decent shift. A few deep cuts in there." : pts >= 150 ? "The crowd's warming up. Dig deeper tomorrow." : "Plenty of divots today. Skip the first answer that comes to mind.";
+  // goal of the day: best tier, then rarest
+  let bi = -1;
+  G.answers.forEach((a, i) => { if (!a.name) return; if (bi < 0) { bi = i; return; } const p = tierById(a.tier).pts, bp = tierById(G.answers[bi].tier).pts; if (p > bp || (p === bp && a.pct < G.answers[bi].pct)) bi = i; });
+  const best = bi >= 0 ? G.answers[bi] : null, bt = best ? tierById(best.tier) : null;
+  const share = `Top Bins No. ${dayNo} · ${pts}/${MAXPTS} · Crowd: ${roarWord(pts)}\n${G.answers.map(a => tierById(a.tier).emoji).join("")}${daily && st.streak > 1 ? `\n🔥 ${st.streak}-day streak` : ""}`;
+  const rows = G.answers.map((a, i) => {
+    const Q = BANK[G.qs[i]], t = tierById(a.tier);
+    const sorted = [...Q.list].sort((x, y) => x.pct - y.pct);
+    return `<details class="ans" style="--c:${t.color}">
+      <summary><span class="n">Q${i + 1}</span><span class="q"><b>${ansLabel(a)}</b><small>${esc(Q.q)}</small></span><span class="t">${t.name}<em>+${t.pts}</em></span>${CHEV}</summary>
+      ${whyBox(Q)}
+      <div class="asearch">
+        <div class="search">${GLASS}
+          <input class="asrch" id="asrch${i}" type="search" placeholder="Search these ${Q.list.length} answers" aria-label="Search the answers to question ${i + 1}" spellcheck="false" autocorrect="off" enterkeyhint="search">
+          <button type="button" class="clear" hidden>Clear</button>
+        </div>
+        <p class="srch-res" aria-live="polite"></p>
+      </div>
+      <ol class="alist">${sorted.map(it => { const tt = tierOf(Q, it); return `<li class="${a.name === it.name ? "me" : ""}" data-k="${esc(it.keys.join(" "))}" style="--c:${tt.color}"><i></i><span class="nm">${esc(it.name)}</span><span class="tn">${tt.name}</span><span class="pc">${fmtPct(it.pct)}</span></li>`; }).join("")}</ol>
+    </details>`;
+  }).join("");
+  const earned = BADGES.filter(b => st.badges[b.id]).length, nextB = BADGES.find(b => !st.badges[b.id]);
+  const dailyBlocks = !daily ? "" : `
+    <div class="stats"><div><b>${st.streak}</b><span>Day streak</span></div><div><b>${st.best}</b><span>Best score</span></div><div><b>${st.tops.length}/${BANK.length}</b><span>Top Bins found</span></div></div>
+    ${careerHTML(st)}
+    <div class="cabinet"><span class="k">Trophy cabinet · <b>${earned}/${BADGES.length}</b></span>
+      <div class="badges">${BADGES.map(b => `<span class="badge${st.badges[b.id] ? " on" : ""}${fresh.includes(b.id) ? " new" : ""}" title="${esc(b.name)}: ${esc(b.how)}">${b.name}</span>`).join("")}</div>
+      ${nextB ? `<span class="next-badge">Next up: ${nextB.name}. To earn it, ${nextB.how}.</span>` : ""}
+    </div>
+    <div class="topics"><span class="k">Tomorrow's teamsheet · kicks off in <b id="cd">--:--:--</b></span>${chipsHTML(dailySet(dayNo + 1).slice(0, 3), "+ 4 more")}</div>`;
+  setPanel(`
+    <span class="eyebrow">Full time · Daily No. ${dayNo}</span>
+    <div class="ft-score"><span class="big" id="ftpts">0</span><span class="of">/ ${MAXPTS} pts<br>${goals} goal${goals === 1 ? "" : "s"} · crowd ${roarWord(pts).toLowerCase()}</span></div>
+    <p>${verdict}</p>
+    ${promoted ? `<div class="promo">Promoted to ${r1.name}</div>` : ""}
+    ${best ? `<div class="motm" style="--c:${bt.color}"><span class="k">Goal of the day</span><b>${esc(best.name)}</b><small>${bt.name} · ${fmtPct(best.pct)} of fans</small></div>` : ""}
+    <span class="k">Tap a question to see every answer, rarest first</span>
+    <div class="ans-list">${rows}</div>
+    ${dailyBlocks}
+    <textarea class="share" id="share" rows="2" readonly aria-label="Shareable result">${esc(share)}</textarea>
+    <div class="btn-row"><button class="btn" id="copy">Copy result</button><span class="toast" id="toast"></span></div>`);
+  countTo($("ftpts"), pts); tickCountdown();
+  // a search bar inside each question's dropdown
+  panel.querySelectorAll(".asrch").forEach(inp => {
+    const d = inp.closest("details"), lis = [...d.querySelectorAll(".alist li")], res = d.querySelector(".srch-res"), clr = d.querySelector(".clear"), why = d.querySelector(".why");
+    const run = () => {
+      const raw = inp.value.trim(), q = norm(raw); let n = 0;
+      lis.forEach(li => { const ok = !q || li.dataset.k.includes(q); li.hidden = !ok; li.classList.toggle("hit", !!q && ok); if (ok) n++; });
+      if (why) why.hidden = !!q;
+      res.textContent = !q ? "" : n ? `${n} of ${lis.length} answers` : `No answers match “${raw}”`;
+      clr.hidden = !raw;
+    };
+    inp.addEventListener("input", run);
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inp.blur(); } });
+    clr.onclick = () => { inp.value = ""; run(); inp.focus(); };
+  });
+  const fitShare = () => { const ta = $("share"); if (ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + 2 + "px"; } };
+  fitShare(); setTimeout(fitShare, 300); document.fonts && document.fonts.ready.then(fitShare);
+  $("copy").onclick = () => {
+    const ta = $("share");
+    const fallback = () => { ta.focus(); ta.select(); $("toast").textContent = "Selected. Press copy on your keyboard."; };
+    try { navigator.clipboard.writeText(ta.value).then(() => { $("toast").textContent = "Copied"; }, fallback); } catch (e) { fallback(); }
+  };
+}
+function tickCountdown() {
+  const el = $("cd"); if (!el) return;
+  const n = new Date(), m = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1);
+  if (m - n < 1000) { location.reload(); return; }
+  const s = Math.floor((m - n) / 1000);
+  el.textContent = [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60].map(x => String(x).padStart(2, "0")).join(":");
+}
+setInterval(tickCountdown, 1000);
+
+// ================= Stadium scene (fills the whole page) =================
+// Drawn in virtual units (W x H); a camera fits it into the empty "slot" beside the card.
+const cv = $("bg"), ctx = cv.getContext("2d"), slot = $("slot");
+const REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const W = 1000, H = 625, FX = W / 2, FY = H * .54;
+let cw = 800, ch = 600, dpr = 1, fit = { cx: 400, cy: 300, sc: 1 }, B = { x0: 0, x1: W, y0: 0, y1: H };
+let crowd = [], lights = [], flareSpots = [], flagSpots = [], standTop = -60, balcony = null;
+let clock = 0; // scene time in ms; runs slow during the Top Bins slow-motion
+const PAL = ["#ffc53d", "#eef3ea", "#2f7a54", "#1c4a35", "#c94a3c", "#eef3ea", "#2f7a54", "#16352a"];
+const SKIN = ["#d8b08c", "#a8774f", "#6b4a33", "#f0cfb0"];
+const hex3 = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, f) => { const A = hex3(a), C = hex3(b); return `rgb(${A.map((v, i) => Math.round(v + (C[i] - v) * f)).join(",")})`; };
+
+const geo = () => {
+  const gw = W * .56, gh = gw * .33, gy = H * .62;
+  return { gw, gh, gy, gx: (W - gw) / 2, kh: gh * .84, spotX: W / 2, spotY: H * .82, br0: W * .02, br1: W * .0095, standB: H * .4, hoardB: H * .445 };
+};
+function resize() {
+  cw = window.innerWidth; ch = window.innerHeight;
+  dpr = Math.max(.75, Math.min(2, window.devicePixelRatio || 1, Math.sqrt(4.2e6 / Math.max(1, cw * ch))));
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  const r = slot.getBoundingClientRect(), top = r.top + window.scrollY;
+  const w = Math.max(200, r.width), h = Math.max(150, Math.min(r.height, ch - top));
+  fit = { cx: r.left + w / 2, cy: top + h / 2, sc: Math.min(w / (.72 * W), h / (.9 * H)) };
+  const sc = fit.sc * .76, ox = fit.cx - sc * FX, oy = fit.cy - sc * FY;
+  const x0 = -ox / sc - 80, x1 = (cw - ox) / sc + 80, y0 = -oy / sc;
+  standTop = Math.min(-30, y0 - 30);
+  buildCrowd(x0, x1);
+}
+function buildCrowd(x0, x1) {
+  const g = geo(), r = rng(99); crowd = [];
+  const span = g.standB - standTop;
+  balcony = span > 260 ? { y: g.standB - span * .46, h: 14 } : null;
+  let y = g.standB - 7, n = 0;
+  while (y > standTop + 40 && n < 7000) {
+    const f = (y - standTop) / span, s = 1.4 + 3.8 * Math.pow(f, 1.4), light = .35 + .5 * f;
+    if (!balcony || y < balcony.y - 4 || y > balcony.y + balcony.h + 2)
+      for (let x = x0 + r() * s * 2; x < x1; x += s * 2.3 * (.85 + r() * .3)) {
+        const ci = Math.floor(r() * PAL.length);
+        crowd.push({ x, y, s, col: mix("#0c1a13", PAL[ci], light), kc: mix("#0c1a13", SKIN[Math.floor(r() * 4)], light), h: ci === 0 || ci === 4, ph: r() * 6.28, fl: 0 }); n++;
+      }
+    y -= s * 2.6;
+  }
+  lights = []; for (let x = Math.floor(x0 / 130) * 130; x < x1; x += 130) lights.push(x);
+  const front = crowd.filter(c => c.y > g.standB - span * .5 && c.y < g.standB - 20);
+  const pick = () => front[Math.floor(r() * front.length)];
+  flareSpots = front.length ? Array.from({ length: 8 }, pick) : [];
+  flagSpots = front.length ? Array.from({ length: 12 }, pick).map((c, i) => ({ c, col: [["#ffc53d", "#1c4a35"], ["#eef3ea", "#2f7a54"], ["#c94a3c", "#eef3ea"]][i % 3], ph: r() * 6 })) : [];
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp01 = t => Math.max(0, Math.min(1, t));
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeBack = t => { const c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+
+const scene = {
+  shot: null, banner: null, particles: [], pops: [], rings: [], trail: [], excite: 0, net: null, atmo: .3, atmoT: .3, mode: "intro",
+  urgent: 0, ts: 1, fireworks: 0, frozen: false,
+  cam: { z: .86, zt: .86, x: 0 }, shake: { a: 0, t0: 0 },
+  reset() { this.shot = null; this.banner = null; this.net = null; this.trail = []; this.fireworks = 0; },
+  fullTime() { this.banner = { text: "FULL TIME", color: "#eef3ea", t0: clock, sub: roarWord(totalPts()).toUpperCase() }; },
+  play(tier, done) {
+    const k = REDUCE ? .35 : 1;
+    const flight = { ground: 520, scuff: 1500, tame: 780, finger: 560, bottom: 520, top: 620, rowz: 760 }[tier] * k;
+    const RUN = 760 * k;
+    this.shot = { tier, side: Math.random() < .5 ? -1 : 1, start: clock, contact: clock + RUN, flight, end: clock + RUN + flight + 1500 * k, done, k };
+    this.banner = null; this.net = null; this.trail = [];
+  }
+};
+const spawn = (n, f) => { for (let i = 0; i < n; i++) scene.particles.push(f(i)); };
+const toX = u => W / 2 + u * geo().gw / 2 * .92;
+const toY = v => { const g = geo(); return g.gy - v * g.gh * .92; };
+const depthR = y => { const g = geo(); return lerp(g.br0, g.br1, clamp01((g.spotY - y) / (g.spotY - g.gy))); };
+
+function keeperState(now) {
+  const g = geo(), s = scene.shot;
+  const idleX = W / 2 + (REDUCE ? 0 : Math.sin(now / 600) * g.gw * .035);
+  const bounce = REDUCE ? 0 : Math.abs(Math.sin(now / 300)) * g.kh * .025;
+  const st = { cx: idleX, cy: g.gy - g.kh * .5 - bounce, ang: 0, pose: "ready", crouch: 0 };
+  if (!s) return st;
+  const baseX = W / 2 + (REDUCE ? 0 : Math.sin(Math.min(now, s.contact) / 600) * g.gw * .035);
+  st.cx = baseX; st.cy = g.gy - g.kh * .5;
+  const t = s.tier, side = s.side, el = now - s.contact;
+  const dive = (u, v, delay, dur) => {
+    const p = easeOut(clamp01((el - delay) / dur));
+    const a = v > .55 ? .85 : 1.28, L = g.kh * .58;
+    const tx = toX(u) - side * Math.sin(a) * L, ty = Math.min(toY(v) + Math.cos(a) * L, g.gy - g.kh * .14);
+    st.cx = lerp(baseX, tx, p); st.cy = lerp(g.gy - g.kh * .5, ty, p) - Math.sin(Math.PI * p) * g.kh * .12;
+    st.ang = side * a * p; st.pose = p > .05 ? "dive" : "ready";
+    const land = clamp01((el - delay - dur - 250 * s.k) / (350 * s.k));
+    if (land > 0) { st.cy = lerp(st.cy, g.gy - g.kh * .12, easeInOut(land)); st.ang = side * lerp(a, 1.5, land); }
+  };
+  if (t === "finger") dive(side * .74, .8, 60 * s.k, s.flight * .95);
+  else if (t === "bottom") dive(side * .55, .12, 110 * s.k, s.flight * .9);
+  else if (t === "top") dive(side * .55, .6, 260 * s.k, s.flight * .85);
+  else if (t === "scuff") { const p = easeOut(clamp01((el - s.flight * .45) / (s.flight * .45))); st.crouch = p; st.pose = p > .1 ? "crouch" : "ready"; st.cy = g.gy - g.kh * .5 + p * g.kh * .12; }
+  else if (t === "tame") { const p = easeOut(clamp01((el - s.flight * .3) / (s.flight * .5))); st.cx = lerp(baseX, W / 2 + side * g.gw * .05, p); st.pose = p > .2 ? "catch" : "ready"; }
+  else if (t === "rowz") { st.pose = clamp01(el / (s.flight * .6)) > .3 ? "look" : "ready"; }
+  else if (t === "ground") { st.pose = el > 300 * s.k ? "hips" : "ready"; }
+  return st;
+}
+const keeperHands = st => { const kh = geo().kh; return st.pose === "crouch" ? { x: st.cx, y: st.cy + kh * .16 } : st.pose === "catch" ? { x: st.cx, y: st.cy - kh * .1 } : { x: st.cx, y: st.cy }; };
+
+function ballState(now, kst) {
+  const g = geo(), s = scene.shot;
+  if (!s || now < s.contact) return { x: g.spotX, y: g.spotY, r: g.br0, behind: false, spin: 0, trail: false, rest: true };
+  const el = now - s.contact, p = clamp01(el / s.flight), after = clamp01((el - s.flight) / (700 * s.k)), side = s.side;
+  let x, y, r, behind = false, trail = p < 1;
+  switch (s.tier) {
+    case "ground": { const e = easeOut(p); x = g.spotX + side * W * .02 * e; y = g.spotY - H * .02 * e; r = depthR(y); trail = false; break; }
+    case "scuff": {
+      const e = 1 - Math.pow(1 - p, 2); x = lerp(g.spotX, W / 2, e); y = lerp(g.spotY, g.gy - g.br1 * .4, e); r = depthR(y);
+      if (p >= 1) { const h = keeperHands(kst); x = h.x; y = h.y; r = g.br1; } trail = false; break;
+    }
+    case "tame": {
+      const e = easeOut(p), ex = W / 2 + side * g.gw * .05, ey = toY(.42), by = lerp(g.spotY, ey, e);
+      x = lerp(g.spotX, ex, e); y = by - Math.sin(Math.PI * p) * H * .04; r = depthR(by);
+      if (p >= 1) { const h = keeperHands(kst); x = h.x; y = h.y; r = g.br1; } break;
+    }
+    case "finger": {
+      const e = easeOut(p), ex = toX(side * .74), ey = toY(.8), by = lerp(g.spotY, ey, e);
+      x = lerp(g.spotX, ex, e) - Math.sin(Math.PI * p) * side * W * .015; y = by - Math.sin(Math.PI * p) * H * .05; r = depthR(by);
+      if (p >= 1) { x = ex + side * g.gw * .28 * after; y = ey - g.gh * .55 * Math.sin(after * 1.6) + g.gh * .2 * after * after; r = g.br1 * (1 - .25 * after); behind = after > .35; trail = after < .6; }
+      break;
+    }
+    case "bottom": {
+      const e = easeOut(p), ex = toX(side * .86), ey = toY(.1), by = lerp(g.spotY, ey, e);
+      x = lerp(g.spotX, ex, e); y = by - Math.sin(Math.PI * p) * H * .012; r = depthR(by);
+      if (p >= 1) { x = ex + side * g.gw * .03 * after; y = ey - g.gh * .06 * after + g.gh * .04 * after * after; r = g.br1 * (1 - .2 * after); behind = true; }
+      break;
+    }
+    case "top": {
+      const e = easeOut(p), ex = toX(side * .9), ey = toY(.88), by = lerp(g.spotY, ey, e);
+      x = lerp(g.spotX, ex, e) - Math.sin(Math.PI * p) * side * W * .05; y = by - Math.sin(Math.PI * p) * H * .07; r = depthR(by);
+      if (p >= 1) { const d = easeInOut(after); x = ex - side * g.gw * .02 * d; y = lerp(ey - g.gh * .04, g.gy - g.gh * .1, d * d); r = g.br1 * (1 - .2 * d); behind = true; }
+      break;
+    }
+    case "rowz": { const e = easeOut(p); x = lerp(g.spotX, toX(side * .45), e); y = lerp(g.spotY, -H * .25, Math.pow(p, .85)); r = lerp(g.br0, g.br1 * .7, e); behind = y < g.gy - g.gh; break; }
+  }
+  return { x, y, r, behind, spin: el / 60, trail };
+}
+
+function onEvents(now) {
+  const s = scene.shot; if (!s) return;
+  const g = geo();
+  if (!s.kicked && now >= s.contact) {
+    s.kicked = true; SFX.kick(s.tier);
+    scene.rings.push({ x: g.spotX, y: g.spotY + g.br0 * .5, t0: now, color: "#eef3ea", r: 70, flat: true });
+    if (!REDUCE) {
+      if (s.tier === "ground") spawn(34, () => ({ x: g.spotX + (Math.random() - .5) * 20, y: g.spotY + g.br0 * .6, vx: (Math.random() - .5) * 500, vy: -Math.random() * 690 - 120, g: 1600, life: 1, dec: .9 + Math.random() * .5, size: 3 + Math.random() * 6, col: Math.random() < .55 ? "#6b4a2b" : "#2f7a3c", rot: 0 }));
+      else spawn(12, () => ({ x: g.spotX, y: g.spotY + g.br0 * .6, vx: (Math.random() - .5) * 250, vy: -Math.random() * 250, g: 1250, life: 1, dec: 2, size: 3, col: "#2f7a3c", rot: 0 }));
+    }
+    if (s.tier === "top") scene.cam.zt = 1.16; else if (s.tier !== "ground" && s.tier !== "scuff") scene.cam.zt = 1.07;
+  }
+  if (!s.landed && now >= s.contact + s.flight) {
+    s.landed = true;
+    const t = tierById(s.tier), isGoal = s.tier === "top" || s.tier === "bottom";
+    scene.banner = { text: isGoal ? "GOAL!" : t.name.toUpperCase(), sub: isGoal ? t.name.toUpperCase() : null, color: t.color, t0: now };
+    const b = ballState(now - 1, keeperState(now));
+    scene.pops.push({ text: `+${t.pts}`, color: t.color, x: Math.max(120, Math.min(W - 120, b.x)), y: Math.max(150, b.y - 20), t0: now });
+    if (isGoal) {
+      scene.net = { x: b.x, y: b.y, t0: now, amp: g.gh * (s.tier === "top" ? .16 : .12) };
+      scene.rings.push({ x: b.x, y: b.y, t0: now, color: t.color, r: 90 });
+      scene.excite = 1; scene.shake = { a: s.tier === "top" ? 14 : 9, t0: now };
+      SFX.net(); SFX.roar(s.tier === "top" ? 1 : .8); if (s.tier === "top") SFX.chime(4);
+      if (!REDUCE) {
+        spawn(s.tier === "top" ? 170 : 95, () => ({ x: lerp(B.x0, B.x1, Math.random()), y: B.y0 - Math.random() * 200, vx: (Math.random() - .5) * 60, vy: 90 + Math.random() * 160, g: 30, life: 1, dec: .3 + Math.random() * .2, size: 4 + Math.random() * 5, col: ["#ffc53d", "#eef3ea", "#7ee08a", "#ffc53d"][Math.floor(Math.random() * 4)], rot: Math.random() * 6, conf: true }));
+        [g.gx - 40, g.gx + g.gw + 40].forEach(px => spawn(44, () => ({ x: px + (Math.random() - .5) * 14, y: g.standB + 6, vx: (Math.random() - .5) * 60, vy: -300 - Math.random() * 260, g: 300, life: 1, dec: 1.1 + Math.random() * .6, size: 3 + Math.random() * 4, col: Math.random() < .5 ? "#ffd27a" : "#ff8a3d", rot: 0, glow: true })));
+      }
+      crowd.forEach(c => { if (Math.random() < .08) c.fl = now + Math.random() * 900; });
+    } else if (s.tier === "finger") {
+      scene.rings.push({ x: b.x, y: b.y, t0: now, color: t.color, r: 60 });
+      scene.excite = .55; scene.shake = { a: 4, t0: now }; SFX.thud(.8); SFX.ooh();
+    }
+    else if (s.tier === "tame") { SFX.thud(.5); SFX.groan(); }
+    else if (s.tier === "scuff") { SFX.thud(.3); SFX.groan(); }
+    else { scene.excite = s.tier === "rowz" ? .2 : 0; SFX.groan(); }
+  }
+  if (!s.fired && now >= s.end) { s.fired = true; scene.cam.zt = 1; const d = s.done; s.done = null; d && d(); }
+}
+
+// ---- drawing (virtual units) ----
+function drawStands(now) {
+  const g = geo(), span = g.standB - standTop;
+  if (B.y0 < standTop) { const sk = ctx.createLinearGradient(0, B.y0, 0, standTop); sk.addColorStop(0, "#010403"); sk.addColorStop(1, "#06100b"); ctx.fillStyle = sk; ctx.fillRect(B.x0, B.y0, B.x1 - B.x0, standTop - B.y0); }
+  const sg = ctx.createLinearGradient(0, standTop, 0, g.standB);
+  sg.addColorStop(0, "#040a07"); sg.addColorStop(.5, "#0b1912"); sg.addColorStop(1, "#14281d");
+  ctx.fillStyle = sg; ctx.fillRect(B.x0, standTop, B.x1 - B.x0, span + 1);
+  const ex = scene.excite, at = scene.atmo, jump = ex > .3, wave = !REDUCE && at > .5 && !jump, hands = jump || at > .55;
+  const bobT = jump ? 90 : 700 - at * 300, bobA = .2 + at * .5 + ex * 1.3;
+  for (const c of crowd) {
+    if (c.x < B.x0 - 6 || c.x > B.x1 + 6 || c.y < B.y0 - 10 || c.y > B.y1 + 10) continue;
+    const s = c.s; let y = c.y;
+    if (!REDUCE) {
+      y += Math.sin(now / bobT + c.ph) * s * bobA;
+      if (jump) y -= Math.max(0, Math.sin(now / 110 + c.ph)) * s * ex * 1.3;
+      if (wave) { const w = Math.sin(now / 520 - c.x / 120); if (w > .8) y -= (w - .8) * 11 * s * at; }
+    }
+    ctx.fillStyle = c.col; ctx.fillRect(c.x - s * .9, y, s * 1.8, s * 1.6);
+    if (hands && c.h) { ctx.fillRect(c.x - s * 1.4, y - s * 1.7, s * .4, s * 1.4); ctx.fillRect(c.x + s, y - s * 1.7, s * .4, s * 1.4); }
+    ctx.fillStyle = c.kc; ctx.fillRect(c.x - s * .55, y - s * .95, s * 1.1, s * 1.05);
+    if (c.fl && now > c.fl && now < c.fl + 90) { ctx.fillStyle = "rgba(255,255,255,.95)"; ctx.beginPath(); ctx.arc(c.x, y - s * .3, s * 2.4, 0, 6.3); ctx.fill(); }
+  }
+  if (!REDUCE && crowd.length && Math.random() < .02 + ex * .25 + at * .03) crowd[Math.floor(Math.random() * crowd.length)].fl = now;
+  if (balcony) {
+    ctx.fillStyle = "#030806"; ctx.fillRect(B.x0, balcony.y, B.x1 - B.x0, balcony.h);
+    ctx.fillStyle = `rgba(255,197,61,${.45 + .3 * Math.sin(now / 400)})`; ctx.fillRect(B.x0, balcony.y + balcony.h - 3, B.x1 - B.x0, 2);
+  }
+  // flags: more of them as the crowd gets louder
+  const nFlags = Math.min(flagSpots.length, Math.round((at * 1.2 + ex * .5) * flagSpots.length));
+  for (let k = 0; k < nFlags; k++) {
+    const f = flagSpots[k], fx = f.c.x, fy = f.c.y - f.c.s * 3, fw = f.c.s * 9, fh = f.c.s * 5;
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(fx, fy + fh * 1.6); ctx.lineTo(fx, fy - 2); ctx.stroke();
+    for (let j = 0; j < 2; j++) {
+      ctx.fillStyle = f.col[j]; ctx.beginPath();
+      for (let i = 0; i <= 8; i++) ctx.lineTo(fx + fw * i / 8, fy + fh * j / 2 + (REDUCE ? 0 : Math.sin(now / 220 + f.ph + i * .7) * fh * .18 * (i / 8)));
+      for (let i = 8; i >= 0; i--) ctx.lineTo(fx + fw * i / 8, fy + fh * (j + 1) / 2 + (REDUCE ? 0 : Math.sin(now / 220 + f.ph + i * .7) * fh * .18 * (i / 8)));
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // flares and smoke
+  const nFl = Math.min(flareSpots.length, Math.round(Math.max(0, at - .3) * 1.6 * flareSpots.length + (ex > .5 ? 3 : 0)));
+  for (let k = 0; k < nFl; k++) {
+    const c = flareSpots[k], fl = REDUCE ? .85 : .7 + Math.random() * .3;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const rg = ctx.createRadialGradient(c.x, c.y - c.s * 2, 0, c.x, c.y - c.s * 2, c.s * 16 * fl);
+    rg.addColorStop(0, "rgba(255,120,80,.9)"); rg.addColorStop(.2, "rgba(255,70,50,.35)"); rg.addColorStop(1, "rgba(255,40,30,0)");
+    ctx.fillStyle = rg; ctx.fillRect(c.x - c.s * 16, c.y - c.s * 18, c.s * 32, c.s * 32); ctx.restore();
+    if (!REDUCE && Math.random() < .3) scene.particles.push({ x: c.x + (Math.random() - .5) * c.s * 2, y: c.y - c.s * 3, vx: (Math.random() - .5) * 8 + 6, vy: -18 - Math.random() * 14, g: 0, life: 1, dec: .25, size: c.s * (3 + Math.random() * 3), col: "rgb(200,190,190)", smoke: true });
+  }
+  // roof and floodlight banks
+  ctx.fillStyle = "#020504"; ctx.fillRect(B.x0, standTop - 400, B.x1 - B.x0, 430);
+  ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(B.x0, standTop + 30, B.x1 - B.x0, 1);
+  for (const lx of lights) {
+    if (lx < B.x0 - 160 || lx > B.x1 + 160) continue;
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    const gl = ctx.createRadialGradient(lx, standTop + 16, 0, lx, standTop + 16, 150);
+    gl.addColorStop(0, "rgba(255,240,200,.45)"); gl.addColorStop(.3, "rgba(255,225,160,.09)"); gl.addColorStop(1, "rgba(255,220,150,0)");
+    ctx.fillStyle = gl; ctx.fillRect(lx - 150, standTop - 134, 300, 300); ctx.restore();
+    ctx.fillStyle = "#111"; ctx.fillRect(lx - 26, standTop + 8, 52, 16);
+    ctx.fillStyle = "#fff8e2"; for (let a = 0; a < 4; a++) for (let b = 0; b < 2; b++) ctx.fillRect(lx - 24 + a * 12.5, standTop + 9.5 + b * 7, 9, 5);
+  }
+}
+function drawBeams(real) {
+  const a = scene.mode === "intro" ? .05 : scene.excite > .4 ? .08 * scene.excite : 0;
+  if (!a || REDUCE) return;
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  [.12, .5, .88].forEach((f, i) => {
+    const x = lerp(B.x0, B.x1, f), y = standTop + 16, ang = Math.PI / 2 + Math.sin(real / 2100 + i * 2.1) * .55, L = 950, w = .085;
+    const gr = ctx.createLinearGradient(x, y, x + Math.cos(ang) * L, y + Math.sin(ang) * L);
+    gr.addColorStop(0, `rgba(255,240,200,${a * 2})`); gr.addColorStop(1, "rgba(255,240,200,0)");
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(ang - w) * L, y + Math.sin(ang - w) * L); ctx.lineTo(x + Math.cos(ang + w) * L, y + Math.sin(ang + w) * L); ctx.closePath(); ctx.fill();
+  });
+  ctx.restore();
+}
+function drawHoarding(now) {
+  const g = geo(), y = g.standB, h = g.hoardB - g.standB;
+  ctx.fillStyle = "#050a07"; ctx.fillRect(B.x0, y, B.x1 - B.x0, h);
+  const goal = scene.banner && scene.banner.text === "GOAL!";
+  const msg = goal ? "GOAL  ·  GOAL  ·  GOAL  ·  " : "TOP BINS  ·  DAILY FOOTBALL QUIZ  ·  RARE ANSWERS SCORE  ·  ";
+  ctx.font = `800 ${Math.round(h * .62)}px "Big Shoulders Display", Impact, sans-serif`;
+  ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  const mw = ctx.measureText(msg).width || 1, off = REDUCE ? 0 : ((now / (goal ? 6 : 18)) % mw);
+  ctx.save(); ctx.beginPath(); ctx.rect(B.x0, y, B.x1 - B.x0, h); ctx.clip();
+  ctx.fillStyle = goal && Math.floor(now / 160) % 2 ? "#eef3ea" : "#ffc53d";
+  for (let x = Math.floor(B.x0 / mw) * mw - off; x < B.x1; x += mw) ctx.fillText(msg, x, y + h * .55);
+  ctx.fillStyle = "rgba(0,0,0,.35)"; for (let yy = y; yy < y + h; yy += 2) ctx.fillRect(B.x0, yy, B.x1 - B.x0, 1);
+  ctx.restore();
+}
+function drawPitch() {
+  const g = geo(), top = g.hoardB;
+  for (let i = 0; i < 60; i++) {
+    const y0 = top + (H - top) * Math.pow(i / 14, 1.5), y1 = top + (H - top) * Math.pow((i + 1) / 14, 1.5);
+    if (y0 > B.y1) break;
+    ctx.fillStyle = i % 2 ? "#1c5639" : "#216443"; ctx.fillRect(B.x0, y0, B.x1 - B.x0, y1 - y0 + 1);
+  }
+  const vg = ctx.createRadialGradient(W / 2, g.gy, 10, W / 2, g.gy + H * .2, W * .8);
+  vg.addColorStop(0, "rgba(255,240,200,.13)"); vg.addColorStop(1, "rgba(0,0,0,.5)");
+  ctx.fillStyle = vg; ctx.fillRect(B.x0, top, B.x1 - B.x0, B.y1 - top);
+  ctx.strokeStyle = "rgba(238,243,234,.8)"; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(B.x0, g.gy); ctx.lineTo(B.x1, g.gy); ctx.stroke();
+  const box = (hw, d, spread) => { ctx.beginPath(); ctx.moveTo(W / 2 - hw, g.gy); ctx.lineTo(W / 2 - hw * spread, g.gy + d); ctx.lineTo(W / 2 + hw * spread, g.gy + d); ctx.lineTo(W / 2 + hw, g.gy); ctx.stroke(); };
+  box(g.gw * .78, H * .075, 1.12); box(g.gw * 1.35, H * .29, 1.3);
+  const boxY = g.gy + H * .29;
+  ctx.save(); ctx.beginPath(); ctx.rect(B.x0, boxY, B.x1 - B.x0, B.y1 - boxY + 10); ctx.clip();
+  ctx.beginPath(); ctx.ellipse(g.spotX, g.spotY, W * .17, H * .14, 0, 0, Math.PI); ctx.stroke(); ctx.restore();
+  ctx.fillStyle = "rgba(238,243,234,.9)"; ctx.beginPath(); ctx.ellipse(g.spotX, g.spotY + g.br0 * .9, 11, 4.5, 0, 0, 6.3); ctx.fill();
+}
+function drawNet(now) {
+  const g = geo();
+  const bl = g.gx + g.gw * .035, br = g.gx + g.gw * .965, bt = g.gy - g.gh * .9, bb = g.gy - g.gh * .07;
+  ctx.fillStyle = "rgba(0,0,0,.32)"; ctx.fillRect(g.gx, g.gy - g.gh, g.gw, g.gh);
+  const n = scene.net, amp = n ? n.amp * Math.exp(-(now - n.t0) / 420) * (1 + .35 * Math.sin((now - n.t0) / 45)) : 0;
+  const disp = (x, y) => {
+    if (!amp) return [x, y];
+    const dx = x - n.x, dy = y - n.y, f = amp * Math.exp(-(dx * dx + dy * dy) / (g.gh * g.gh * .12)), len = Math.hypot(dx, dy) || 1;
+    return [x + dx / len * f * .55 + (W / 2 - x) * f / W * .6, y - f * .7 + dy / len * f * .3];
+  };
+  ctx.strokeStyle = "rgba(238,243,234,.26)"; ctx.lineWidth = 1;
+  const C = 26, R = 9;
+  for (let i = 0; i <= C; i++) { ctx.beginPath(); for (let j = 0; j <= R; j++) { const [x, y] = disp(lerp(bl, br, i / C), lerp(bt, bb, j / R)); j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+  for (let j = 0; j <= R; j++) { ctx.beginPath(); for (let i = 0; i <= C; i++) { const [x, y] = disp(lerp(bl, br, i / C), lerp(bt, bb, j / R)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+  ctx.strokeStyle = "rgba(238,243,234,.18)";
+  for (let i = 0; i <= 12; i++) { ctx.beginPath(); ctx.moveTo(lerp(g.gx, g.gx + g.gw, i / 12), g.gy - g.gh); ctx.lineTo(lerp(bl, br, i / 12), bt); ctx.stroke(); }
+  for (let j = 0; j <= 6; j++) { const t = j / 6; [[g.gx, bl], [g.gx + g.gw, br]].forEach(([fx, bx]) => { ctx.beginPath(); ctx.moveTo(fx, lerp(g.gy - g.gh, g.gy, t)); ctx.lineTo(bx, lerp(bt, bb, t)); ctx.stroke(); }); }
+}
+// the two "top bins": glowing targets in the top corners while a question is live
+function drawTargets(now) {
+  if (scene.mode !== "play" || scene.shot) return;
+  const a = REDUCE ? .5 : .4 + .3 * Math.sin(now / 320);
+  ctx.save(); ctx.strokeStyle = `rgba(255,197,61,${a})`; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]); ctx.lineDashOffset = REDUCE ? 0 : -now / 50;
+  ctx.shadowColor = "#ffc53d"; ctx.shadowBlur = 12;
+  [-1, 1].forEach(sd => { const x = toX(sd * .9), y = toY(.88); ctx.strokeRect(x - 17, y - 15, 34, 30); });
+  ctx.restore();
+}
+function drawPosts() {
+  const g = geo(), lw = 9;
+  ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = lw; ctx.lineCap = "butt";
+  ctx.beginPath(); ctx.moveTo(g.gx + 5, g.gy); ctx.lineTo(g.gx + 5, g.gy - g.gh + 5); ctx.lineTo(g.gx + g.gw - 5, g.gy - g.gh + 5); ctx.lineTo(g.gx + g.gw - 5, g.gy); ctx.stroke();
+  ctx.strokeStyle = "#f7f9f3"; ctx.lineCap = "square";
+  ctx.beginPath(); ctx.moveTo(g.gx, g.gy); ctx.lineTo(g.gx, g.gy - g.gh); ctx.lineTo(g.gx + g.gw, g.gy - g.gh); ctx.lineTo(g.gx + g.gw, g.gy); ctx.stroke();
+}
+function drawKeeper(st) {
+  const g = geo(), kh = g.kh;
+  ctx.fillStyle = "rgba(0,0,0,.3)"; ctx.beginPath(); ctx.ellipse(st.cx, g.gy + kh * .02, kh * .3, kh * .05, 0, 0, 6.3); ctx.fill();
+  ctx.save(); ctx.translate(st.cx, st.cy); ctx.rotate(st.ang);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const lw = kh * .1, c = st.crouch || 0, legY = kh * (.5 - c * .12), spread = kh * (.14 + c * .1);
+  ctx.strokeStyle = "#ff6b9a"; ctx.lineWidth = lw * .9;
+  ctx.beginPath(); ctx.moveTo(-kh * .06, kh * .12); ctx.lineTo(-spread * .9, kh * .32 - c * kh * .04); ctx.lineTo(-spread, legY);
+  ctx.moveTo(kh * .06, kh * .12); ctx.lineTo(spread * .9, kh * .32 - c * kh * .04); ctx.lineTo(spread, legY); ctx.stroke();
+  ctx.fillStyle = "#151515"; [[-spread, legY], [spread, legY]].forEach(([x, y]) => { ctx.beginPath(); ctx.ellipse(x, y, lw * .7, lw * .4, 0, 0, 6.3); ctx.fill(); });
+  ctx.fillStyle = "#2a1530"; ctx.beginPath(); ctx.roundRect(-kh * .12, kh * .04, kh * .24, kh * .14, kh * .03); ctx.fill();
+  ctx.fillStyle = "#ff6b9a"; ctx.beginPath(); ctx.roundRect(-kh * .13, -kh * .25, kh * .26, kh * .32, kh * .06); ctx.fill();
+  ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(-kh * .13, -kh * .05, kh * .26, kh * .03);
+  const P = { ready: [[-kh * .3, -kh * .02], [kh * .3, -kh * .02]], dive: [[-kh * .09, -kh * .62], [kh * .09, -kh * .62]], catch: [[-kh * .06, -kh * .1], [kh * .06, -kh * .1]], crouch: [[-kh * .06, kh * .16], [kh * .06, kh * .16]], look: [[-kh * .16, -kh * .5], [kh * .16, -kh * .5]], hips: [[-kh * .13, kh * .05], [kh * .13, kh * .05]] }[st.pose];
+  ctx.strokeStyle = "#ff6b9a"; ctx.lineWidth = lw * .75;
+  ctx.beginPath(); ctx.moveTo(-kh * .1, -kh * .2); ctx.lineTo(P[0][0], P[0][1]); ctx.moveTo(kh * .1, -kh * .2); ctx.lineTo(P[1][0], P[1][1]); ctx.stroke();
+  ctx.fillStyle = "#f4f1e6"; P.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, lw * .62, 0, 6.3); ctx.fill(); });
+  ctx.fillStyle = "#b07a55"; ctx.beginPath(); ctx.arc(0, -kh * .34, kh * .085, 0, 6.3); ctx.fill();
+  ctx.fillStyle = "#1b120c"; ctx.beginPath(); ctx.arc(0, -kh * .36, kh * .085, Math.PI * 1.05, Math.PI * 1.95); ctx.fill();
+  ctx.restore();
+}
+function drawStriker(now) {
+  const g = geo(), s = scene.shot, S0 = H * .3;
+  let x = g.spotX - W * .06, fy = g.spotY + H * .06, sc = 1, run = 0, kick = -1;
+  if (s) {
+    const pr = clamp01((now - s.start) / (s.contact - s.start - 60 * s.k)), e = easeInOut(pr);
+    x = lerp(g.spotX - W * .2, g.spotX - W * .06, e); fy = lerp(H * 1.12, g.spotY + H * .06, e); sc = lerp(1.35, 1, e);
+    run = pr < 1 ? now / 85 : 0;
+    kick = now < s.contact - 170 * s.k ? -1 : clamp01((now - (s.contact - 170 * s.k)) / (420 * s.k));
+  } else fy += REDUCE ? 0 : Math.sin(now / 500) * H * .002;
+  const S = S0 * sc, hipY = fy - S * .47 - (run ? Math.abs(Math.sin(run)) * S * .03 : 0), shY = hipY - S * .3;
+  ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(x + S * .02, fy, S * .18, S * .035, 0, 0, 6.3); ctx.fill();
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const leg = (hx, hy, fx, fyy, kneeOut) => {
+    const kx = (hx + fx) / 2 + kneeOut, ky = (hy + fyy) / 2;
+    ctx.strokeStyle = "#e9c29a"; ctx.lineWidth = S * .065; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(kx, ky); ctx.lineTo(fx, fyy); ctx.stroke();
+    ctx.strokeStyle = "#eef3ea"; ctx.lineWidth = S * .07; ctx.beginPath(); ctx.moveTo(lerp(kx, fx, .2), lerp(ky, fyy, .2)); ctx.lineTo(fx, fyy - S * .02); ctx.stroke();
+    ctx.fillStyle = "#ffc53d"; ctx.beginPath(); ctx.ellipse(fx, fyy, S * .045, S * .03, 0, 0, 6.3); ctx.fill();
+  };
+  const sw = run ? Math.sin(run) : 0;
+  leg(x - S * .045, hipY, x - S * .07 + sw * S * .03, fy - (sw > 0 ? sw * S * .06 : 0), -S * .02);
+  let kfx = x + S * .08 - sw * S * .03, kfy = fy - (sw < 0 ? -sw * S * .06 : 0);
+  if (kick >= 0) {
+    const back = { x: x + S * .14, y: fy - S * .28 }, hit = { x: g.spotX - g.br0 * .6, y: g.spotY + g.br0 * .3 }, thru = { x: g.spotX + S * .05, y: g.spotY - S * .3 };
+    if (s.tier === "ground") { hit.y = g.spotY + g.br0 * 1.2; thru.y = g.spotY - S * .05; }
+    if (kick < .4) { const t = easeInOut(kick / .4); kfx = lerp(kfx, back.x, t); kfy = lerp(kfy, back.y, t); }
+    else if (kick < .55) { const t = (kick - .4) / .15; kfx = lerp(back.x, hit.x, t); kfy = lerp(back.y, hit.y, t); }
+    else { const t = easeOut((kick - .55) / .45); kfx = lerp(hit.x, thru.x, t); kfy = lerp(hit.y, thru.y, t); }
+  }
+  leg(x + S * .045, hipY, kfx, kfy, S * .03);
+  ctx.fillStyle = "#132a20"; ctx.beginPath(); ctx.roundRect(x - S * .1, hipY - S * .05, S * .2, S * .11, S * .02); ctx.fill();
+  const armSw = run ? Math.sin(run) * S * .06 : 0, kickArm = kick >= 0 ? Math.sin(Math.min(1, kick) * Math.PI) * S * .08 : 0;
+  ctx.strokeStyle = "#e9c29a"; ctx.lineWidth = S * .05;
+  ctx.beginPath(); ctx.moveTo(x - S * .11, shY + S * .03); ctx.lineTo(x - S * .2 - kickArm, hipY - S * .02 + armSw);
+  ctx.moveTo(x + S * .11, shY + S * .03); ctx.lineTo(x + S * .19, hipY - S * .02 - armSw); ctx.stroke();
+  ctx.fillStyle = "#eef3ea";
+  ctx.beginPath(); ctx.moveTo(x - S * .13, shY); ctx.lineTo(x + S * .13, shY); ctx.lineTo(x + S * .1, hipY - S * .03); ctx.lineTo(x - S * .1, hipY - S * .03); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(x - S * .17, shY, S * .08, S * .09, S * .02); ctx.roundRect(x + S * .09, shY, S * .08, S * .09, S * .02); ctx.fill();
+  ctx.fillStyle = "#1f6b45"; ctx.fillRect(x - S * .13, shY, S * .26, S * .02);
+  ctx.fillStyle = "#123a28"; ctx.font = `800 ${Math.round(S * .14)}px "Big Shoulders Display", Impact, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("10", x, shY + S * .15);
+  ctx.font = `700 ${Math.round(S * .045)}px "Barlow Semi Condensed", sans-serif`; ctx.fillText("BINS", x, shY + S * .055);
+  ctx.fillStyle = "#c08a60"; ctx.fillRect(x - S * .025, shY - S * .04, S * .05, S * .05);
+  ctx.fillStyle = "#1e140d"; ctx.beginPath(); ctx.arc(x, shY - S * .085, S * .065, 0, 6.3); ctx.fill();
+}
+function drawShadow(b, g) {
+  if (b.behind) return;
+  if (b.rest) { ctx.fillStyle = "rgba(0,0,0,.32)"; ctx.beginPath(); ctx.ellipse(b.x, b.y + b.r * .95, b.r * .95, b.r * .28, 0, 0, 6.3); ctx.fill(); return; }
+  const f = clamp01((g.br0 - b.r) / (g.br0 - g.br1)), gy = lerp(g.spotY + g.br0 * .95, g.gy + 3, f), hgt = gy - b.y;
+  if (hgt < -2 || hgt > g.gh * 1.6) return;
+  ctx.fillStyle = `rgba(0,0,0,${(.3 * (1 - clamp01(hgt / (g.gh * 1.6))) + .04).toFixed(3)})`;
+  ctx.beginPath(); ctx.ellipse(b.x, gy, b.r * .95, b.r * .28, 0, 0, 6.3); ctx.fill();
+}
+function drawTrail() {
+  const tr = scene.trail, n = tr.length; if (n < 2) return;
+  ctx.fillStyle = scene.shot && scene.shot.tier === "top" ? "#ffc53d" : "#ffffff";
+  for (let i = 0; i < n; i++) { const f = (i + 1) / n; ctx.globalAlpha = f * f * .3; ctx.beginPath(); ctx.arc(tr[i].x, tr[i].y, tr[i].r * (.35 + .65 * f), 0, 6.3); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+function drawBall(b) {
+  ctx.save(); ctx.translate(b.x, b.y);
+  const sh = ctx.createRadialGradient(-b.r * .35, -b.r * .4, b.r * .1, 0, 0, b.r);
+  sh.addColorStop(0, "#ffffff"); sh.addColorStop(1, "#bfc6bc");
+  ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(0, 0, b.r, 0, 6.3); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, 0, b.r, 0, 6.3); ctx.clip(); ctx.rotate(b.spin);
+  ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.arc(0, 0, b.r * .26, 0, 6.3); ctx.fill();
+  for (let i = 0; i < 5; i++) { const a = i * 1.2566; ctx.beginPath(); ctx.arc(Math.cos(a) * b.r * .78, Math.sin(a) * b.r * .78, b.r * .22, 0, 6.3); ctx.fill(); }
+  ctx.restore();
+}
+function drawRings(now) {
+  scene.rings = scene.rings.filter(r => now - r.t0 < 450);
+  for (const r of scene.rings) {
+    const t = (now - r.t0) / 450, rad = r.r * easeOut(t);
+    ctx.strokeStyle = r.color; ctx.globalAlpha = (1 - t) * .8; ctx.lineWidth = 4 * (1 - t) + 1;
+    ctx.beginPath(); ctx.ellipse(r.x, r.y, rad, rad * (r.flat ? .3 : 1), 0, 0, 6.3); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function drawParticles(dt) {
+  const ps = scene.particles;
+  for (let i = ps.length - 1; i >= 0; i--) {
+    const p = ps[i];
+    p.vy += p.g * dt; p.x += p.vx * dt + (p.conf ? Math.sin(p.rot += dt * 6) * .6 : 0); p.y += p.vy * dt; p.life -= p.dec * dt;
+    if (p.life <= 0 || p.y > B.y1 + 40) { ps.splice(i, 1); continue; }
+    if (p.smoke) { ctx.globalAlpha = p.life * .07; ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2 - p.life), 0, 6.3); ctx.fill(); continue; }
+    ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.col;
+    if (p.glow) { ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, 6.3); ctx.fill(); ctx.restore(); }
+    else if (p.conf) { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); ctx.restore(); }
+    else ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+  if (ps.length > 1400) ps.splice(0, ps.length - 1400);
+}
+function drawPops(now) {
+  scene.pops = scene.pops.filter(p => now - p.t0 < 1500);
+  for (const p of scene.pops) {
+    const t = (now - p.t0) / 1500;
+    ctx.globalAlpha = 1 - t * t; ctx.font = `900 ${Math.round(46 * (1 + .25 * Math.sin(Math.min(1, t * 4) * Math.PI)))}px "Big Shoulders Display", Impact, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineWidth = 5; ctx.strokeStyle = "rgba(0,0,0,.7)";
+    ctx.strokeText(p.text, p.x, p.y - t * 90); ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - t * 90);
+  }
+  ctx.globalAlpha = 1;
+}
+function drawBanner(now) {
+  const b = scene.banner; if (!b) return;
+  const p = clamp01((now - b.t0) / 380), sc = REDUCE ? 1 : Math.max(.01, easeBack(p));
+  let fs = 110;
+  ctx.font = `900 ${fs}px "Big Shoulders Display", Impact, sans-serif`;
+  const w = ctx.measureText(b.text).width; if (w > W * .7) { fs *= W * .7 / w; ctx.font = `900 ${fs}px "Big Shoulders Display", Impact, sans-serif`; }
+  ctx.save(); ctx.translate(W / 2, H * .2); ctx.scale(sc, sc); ctx.rotate(-.035);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.shadowColor = b.color; ctx.shadowBlur = fs * .35;
+  ctx.lineWidth = fs * .09; ctx.strokeStyle = "rgba(0,0,0,.75)"; ctx.strokeText(b.text, 0, 0);
+  ctx.fillStyle = b.color; ctx.fillText(b.text, 0, 0); ctx.shadowBlur = 0;
+  if (b.sub) {
+    const f2 = fs * .3; ctx.font = `800 ${f2}px "Big Shoulders Display", Impact, sans-serif`;
+    const tw = ctx.measureText(b.sub).width + f2;
+    ctx.fillStyle = "rgba(0,0,0,.7)"; ctx.fillRect(-tw / 2, fs * .48, tw, f2 * 1.3);
+    ctx.fillStyle = b.color; ctx.fillText(b.sub, 0, fs * .48 + f2 * .68);
+  }
+  ctx.restore();
+}
+function edgeGlow(rgb, a) {
+  const eg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * .32, cw / 2, ch / 2, Math.max(cw, ch) * .75);
+  eg.addColorStop(0, `rgba(${rgb},0)`); eg.addColorStop(1, `rgba(${rgb},${a.toFixed(3)})`);
+  ctx.fillStyle = eg; ctx.fillRect(0, 0, cw, ch);
+}
+
+let last = performance.now(), ambT = 0;
+function frame(real) {
+  const dtR = Math.min(.05, Math.max(0, (real - last) / 1000)); last = real;
+  // slow motion as a Top Bins strike closes in on the corner
+  const s0 = scene.shot; let tsT = 1;
+  if (s0 && !REDUCE && s0.tier === "top") { const p = (clock - s0.contact) / s0.flight; if (p > .4 && p < 1.1) tsT = .26; }
+  scene.ts += (tsT - scene.ts) * Math.min(1, dtR * 16);
+  if (!scene.frozen) clock += dtR * 1000 * scene.ts;
+  const now = clock, dt = dtR * scene.ts;
+  scene.excite = Math.max(0, scene.excite - dtR * .22);
+  scene.atmo += (scene.atmoT - scene.atmo) * Math.min(1, dtR * 1.2);
+  scene.cam.z += (scene.cam.zt - scene.cam.z) * Math.min(1, dtR * (REDUCE ? 20 : 2.4));
+  if ((ambT += dtR) > .4) { ambT = 0; SFX.atmo(scene.atmo + scene.excite * .8); }
+  onEvents(now);
+  const g = geo(), kst = keeperState(now), b = ballState(now, kst);
+  scene.cam.x += ((REDUCE || b.rest ? 0 : (b.x - W / 2) * .16) - scene.cam.x) * Math.min(1, dtR * 4);
+  if (b.trail && !REDUCE) { scene.trail.push({ x: b.x, y: b.y, r: b.r }); if (scene.trail.length > 16) scene.trail.shift(); }
+  else if (scene.trail.length) scene.trail.shift();
+  if (scene.fireworks && !REDUCE && Math.random() < .012 + scene.fireworks * .03) {
+    const fx = lerp(B.x0 + 60, B.x1 - 60, Math.random()), fy = lerp(Math.max(B.y0, standTop) + 50, g.standB - 110, Math.random());
+    const col = ["#ffc53d", "#eef3ea", "#7ee08a", "#ff8a3d", "#6fc3ff"][Math.floor(Math.random() * 5)];
+    spawn(34, i => { const a = i / 34 * 6.283, v = 90 + Math.random() * 90; return { x: fx, y: fy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 90, life: 1, dec: .8 + Math.random() * .4, size: 2.5 + Math.random() * 2, col, rot: 0, glow: true }; });
+  }
+  // camera
+  const sh = scene.shake, amp = REDUCE ? 0 : sh.a * Math.exp(-(now - sh.t0) / 260);
+  const pan = REDUCE || scene.mode !== "intro" ? 0 : Math.sin(real / 5200) * 24;
+  const sc = fit.sc * scene.cam.z;
+  const ox = fit.cx - sc * (FX + scene.cam.x) + pan + (Math.random() - .5) * 2 * amp, oy = fit.cy - sc * FY + (Math.random() - .5) * 2 * amp;
+  B = { x0: -ox / sc, x1: (cw - ox) / sc, y0: -oy / sc, y1: (ch - oy) / sc };
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = "#05110b"; ctx.fillRect(0, 0, cw, ch);
+  ctx.setTransform(dpr * sc, 0, 0, dpr * sc, dpr * ox, dpr * oy);
+  drawStands(now); drawBeams(real); drawHoarding(now); drawPitch();
+  drawNet(now); drawTargets(now);
+  if (b.behind) { drawTrail(); drawBall(b); }
+  drawKeeper(kst);
+  drawPosts();
+  drawShadow(b, g);
+  if (!b.behind && !b.rest) { drawTrail(); drawBall(b); }
+  drawStriker(now);
+  if (b.rest) drawBall(b);
+  drawRings(now);
+  drawParticles(dt);
+  drawPops(now);
+  drawBanner(now);
+  // screen-space finish
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const vg = ctx.createRadialGradient(fit.cx, fit.cy, Math.min(cw, ch) * .25, fit.cx, fit.cy, Math.max(cw, ch) * .85);
+  vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.55)");
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+  if (scene.urgent) edgeGlow("255,60,40", REDUCE ? .12 : .1 + .1 * Math.sin(real / 150));
+  if (scene.ts < .9) edgeGlow("255,197,61", (1 - scene.ts) * .32);
+  if (scene.excite > .6 && !REDUCE) { ctx.fillStyle = `rgba(255,240,200,${((scene.excite - .6) * .22).toFixed(3)})`; ctx.fillRect(0, 0, cw, ch); }
+  requestAnimationFrame(frame);
+}
+
+// ================= Boot =================
+const muteBtn = $("mute");
+const syncMute = () => { muteBtn.setAttribute("aria-pressed", String(SFX.muted)); muteBtn.setAttribute("aria-label", SFX.muted ? "Turn sound on" : "Mute sound"); muteBtn.title = SFX.muted ? "Sound is off" : "Sound is on"; };
+muteBtn.onclick = () => { SFX.unlock(); SFX.toggle(); syncMute(); SFX.kick("tame"); };
+["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => SFX.unlock(), { passive: true }));
+startDaily();
+syncMute();
+resize();
+new ResizeObserver(() => resize()).observe(slot);
+window.addEventListener("resize", resize);
+if (G.answers.length >= 7) showFinal();
+else if (G.answers.length > 0 || G.cur) showQuestion();
+else showIntro();
+requestAnimationFrame(frame);
+</script>
