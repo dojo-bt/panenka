@@ -1494,3 +1494,83 @@ else if (G.answers.length > 0 || G.cur) showQuestion();
 else showIntro();
 requestAnimationFrame(frame);
 </script>
+
+<!-- Archive Feature -->
+<div id="archive-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9999;overflow-y:auto;padding:20px">
+  <div style="max-width:900px;margin:0 auto;background:rgba(6,18,12,0.95);border:1px solid rgba(238,243,234,0.13);border-radius:10px;padding:30px;color:#eef3ea">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px">
+      <h1 style="font-family:'Big Shoulders Display',Impact,sans-serif;font-size:48px;margin:0;text-transform:uppercase;letter-spacing:0.02em">Archive</h1>
+      <button onclick="closeArchive()" style="background:none;border:1px solid rgba(238,243,234,0.13);color:#eef3ea;font-size:28px;width:40px;height:40px;cursor:pointer;border-radius:8px">×</button>
+    </div>
+    
+    <div id="archive-locked" style="text-align:center;padding:40px">
+      <p style="font-size:18px;margin-bottom:20px">Replay all 40 daily puzzles from the past 6 weeks</p>
+      <button onclick="unlockArchive()" style="background:#ffc53d;color:#2a1d00;border:none;padding:16px 32px;font-size:20px;font-weight:800;font-family:'Big Shoulders Display',Impact;border-radius:6px;cursor:pointer;text-transform:uppercase;box-shadow:0 6px 0 -1px #a0760f">Unlock for €2.99</button>
+      <p style="color:#a3b8aa;margin-top:20px;font-size:14px">Secure payment via Stripe</p>
+    </div>
+
+    <div id="archive-unlocked" style="display:none">
+      <div id="archive-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:20px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Archive Feature Code
+const STRIPE_KEY = "pk_test_51UZukjBCze77iUssfju5uOEOrbOBx7OFgbpVy2l8FgXtAXlRpYJtzE0RHxmCar4nZfRrWG8NHzJDlBnuTJkfhBmS00LwLk2bXf";
+const SUPABASE_URL = "https://crrvauajawpszujvlbhv.supabase.co";
+
+function openArchive() {
+  const modal = document.getElementById("archive-modal");
+  modal.style.display = "block";
+  if (localStorage.getItem("topbins:archive_unlocked")) {
+    document.getElementById("archive-locked").style.display = "none";
+    document.getElementById("archive-unlocked").style.display = "block";
+    renderArchive();
+  }
+}
+
+function closeArchive() {
+  document.getElementById("archive-modal").style.display = "none";
+}
+
+function unlockArchive() {
+  // Redirect to Stripe checkout
+  alert("Archive unlock coming soon! For now, enjoy the daily puzzle.");
+}
+
+function renderArchive() {
+  const grid = document.getElementById("archive-grid");
+  grid.innerHTML = "";
+  BANK.forEach((Q, i) => {
+    const el = document.createElement("div");
+    el.style.cssText = "background:rgba(255,255,255,0.05);border:1px solid rgba(238,243,234,0.13);padding:16px;border-radius:8px;cursor:pointer;transition:all 0.2s";
+    el.innerHTML = `<strong>${Q.topic}</strong><br><small style="color:#a3b8aa">${Q.q.substring(0,40)}...</small>`;
+    el.onmouseover = () => el.style.background = "rgba(255,197,61,0.1)";
+    el.onmouseout = () => el.style.background = "rgba(255,255,255,0.05)";
+    el.onclick = () => playArchivedQuestion(i);
+    grid.appendChild(el);
+  });
+}
+
+function playArchivedQuestion(idx) {
+  closeArchive();
+  G.qs = [idx];
+  G.answers = [];
+  showQuestion();
+}
+
+// Add Archive button to header
+window.addEventListener("DOMContentLoaded", () => {
+  const header = document.querySelector(".board");
+  if (header) {
+    const archiveBtn = document.createElement("button");
+    archiveBtn.innerHTML = "📚 Archive";
+    archiveBtn.style.cssText = "background:rgba(255,255,255,0.04);border:1px solid rgba(238,243,234,0.13);color:#eef3ea;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;transition:background 0.2s";
+    archiveBtn.onmouseover = () => archiveBtn.style.background = "rgba(255,255,255,0.08)";
+    archiveBtn.onmouseout = () => archiveBtn.style.background = "rgba(255,255,255,0.04)";
+    archiveBtn.onclick = openArchive;
+    header.appendChild(archiveBtn);
+  }
+});
+</script>
