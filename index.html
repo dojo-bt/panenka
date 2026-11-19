@@ -668,14 +668,19 @@ const SCHEDULE = (() => {
   const groups = {};
   BANK.forEach((Q, i) => { if (!pinned.includes(i)) (groups[Q.batch || 0] = groups[Q.batch || 0] || []).push(i); });
   const rest = Object.keys(groups).sort((x, y) => x - y).flatMap(b => shuffled(groups[b], rng(4242 + +b)));
-  return [...pinned, ...rest];
+  const order = [...pinned, ...rest];
+  // Day 5 was reset to a fresh set: swap its seven slots with day 11's (neither had been played).
+  for (const [d1, d2] of [[5, 11]]) for (let i = 0; i < 7; i++) {
+    const x = (d1 - 1) * 7 + i, y = (d2 - 1) * 7 + i; [order[x], order[y]] = [order[y], order[x]];
+  }
+  return order;
 })();
 const dailySet = k => Array.from({ length: 7 }, (_, i) => { const N = SCHEDULE.length; return SCHEDULE[((((k - 1) * 7 + i) % N) + N) % N]; });
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
-const DAY_KEY = "topbins:v5:day:" + dayNo, STATS_KEY = "topbins:v3:stats";
+const DAY_KEY = "topbins:v6:day:" + dayNo, STATS_KEY = "topbins:v3:stats";
 
 // ================= Career: streak, rank, badges =================
 const RANKS = [[0, "Sunday League"], [500, "Non-League"], [1500, "League Two"], [3000, "League One"], [5000, "Championship"], [8000, "Premier League"], [12000, "Champions League"], [18000, "World Class"], [26000, "Ballon d'Or"]];
