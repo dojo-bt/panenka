@@ -583,11 +583,11 @@ BANK.forEach((Q, i) => { Q.topic = Q.t || TOPICS[i] || "Football"; });
 
 // ================= Rarity tiers (Krillion-style points: 10 / 15 / 30 / 60 / 85 / 100) =================
 const TIERS = [
- { id: "top",    name: "Panenka",           pts: 100, color: "#ffc53d", emoji: "🎯", th: "rarest only", line: "The single rarest answer on the board. Chipped down the middle while the keeper dived." },
- { id: "bottom", name: "Bottom Corner",     below: .5,  pts: 85, color: "#b48cff", emoji: "🟪", th: "< 0.5%", line: "A deep cut. Low, hard and inside the post." },
- { id: "finger", name: "Fingertip Save",    below: 2,   pts: 60, color: "#6fc3ff", emoji: "🧤", th: "< 2%", line: "A proper strike. The keeper only just got a glove to it." },
- { id: "tame",   name: "Tame Effort",       below: 6,   pts: 30, color: "#7ee08a", emoji: "🟩", th: "< 6%", line: "On target, but the keeper read it all the way." },
- { id: "scuff",  name: "Scuffed It",        below: 1e9, pts: 15, color: "#9aa59d", emoji: "⬜", th: "6%+", line: "The answer everyone blurts out. It trickled into the keeper's arms." }
+ { id: "top",    name: "Panenka",           pts: 100, color: "#ffc53d", emoji: "🎯", th: "1 answer", line: "The single rarest answer on the board. Chipped down the middle while the keeper dived." },
+ { id: "bottom", name: "Bottom Corner",     upto: .25, pts: 85, color: "#b48cff", emoji: "🟪", th: "next 25%", line: "A deep cut. Low, hard and inside the post." },
+ { id: "finger", name: "Fingertip Save",    upto: .65, pts: 60, color: "#6fc3ff", emoji: "🧤", th: "middle 40%", line: "A proper strike. The keeper only just got a glove to it." },
+ { id: "tame",   name: "Tame Effort",       upto: .90, pts: 30, color: "#7ee08a", emoji: "🟩", th: "next 25%", line: "On target, but the keeper read it all the way." },
+ { id: "scuff",  name: "Scuffed It",        upto: 1,   pts: 15, color: "#9aa59d", emoji: "⬜", th: "top 10%", line: "The answer everyone blurts out. It trickled into the keeper's arms." }
 ];
 const ROWZ = { id: "rowz", name: "Row Z", pts: 0, color: "#ff7a6b", emoji: "❌", th: "no answer", line: "No answer on the board. That one's in the car park." };
 const ALL_TIERS = [...TIERS, ROWZ];
@@ -612,7 +612,18 @@ for (const Q of BANK) {
   Q.list.forEach(it => { it.keys = it.keys.filter(k => !full[k] || full[k] === it); });
   Q.rarest = Q.list.reduce((m, it) => it.pct < m.pct ? it : m, Q.list[0]);
 }
-const tierOf = (Q, it) => it === Q.rarest ? TIERS[0] : TIERS.slice(1).find(t => it.pct < t.below);
+// Bell curve by rank: 1 Panenka, then the rest split 25% Bottom Corner / 40% Fingertip / 25% Tame / 10% Scuffed.
+// Answers on the same % share the rarer tier; the most-said answer is always Scuffed It.
+for (const Q of BANK) {
+  const rest = Q.list.filter(it => it !== Q.rarest).sort((x, y) => x.pct - y.pct), m = rest.length;
+  Q.rarest.tier = TIERS[0];
+  rest.forEach((it, j) => {
+    const prev = rest[j - 1];
+    it.tier = prev && prev.pct === it.pct ? prev.tier
+      : j === m - 1 ? TIERS[4] : TIERS.slice(1).find(t => (j + .5) / m < t.upto);
+  });
+}
+const tierOf = (Q, it) => it.tier;
 function lev(a, b) {
   if (Math.abs(a.length - b.length) > 3) return 9;
   let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
