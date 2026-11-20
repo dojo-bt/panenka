@@ -4,9 +4,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
 <style>
-/* Pixelify's 3, 5 and 7 read as 8, S and a hook: numerals come from Jersey 10 instead, scaled to match */
-@font-face { font-family: "Panenka Digits"; font-display: swap; size-adjust: 124%;
-  src: url(https://fonts.gstatic.com/s/jersey10/v4/GftH7vZKsggXMf9n_J5n_5jh6V89Sg.woff2) format("woff2");
+/* Pixelify's 3, 5 and 7 read as 8, S and a hook: numerals come from Press Start 2P, the clearest blocky digits */
+@font-face { font-family: "Panenka Digits"; font-display: swap; size-adjust: 70%; ascent-override: 100%; descent-override: 0%;
+  src: url(https://fonts.gstatic.com/s/pressstart2p/v16/e3t4euO8T-267oIAQAu6jDQyK3nVivNm4I81.woff2) format("woff2");
   unicode-range: U+0030-0039, U+0025, U+002B; }
 /* Retro: a 16-bit football game. The stadium is drawn at low resolution and blown up into crisp pixels behind
    menu panels with stepped pixel corners and bevels. Pixelify Sans for every game voice, Barlow for reading. */
@@ -71,12 +71,12 @@ body {
 .brand-sub { margin-top: 4px; font: 500 13px/1.2 var(--f-mono); color: var(--dim); }
 .pips { display: flex; justify-content: center; gap: 8px; }
 .pip { width: 26px; height: 26px; flex: none; display: grid; place-items: center; box-sizing: border-box;
-  border: 2px solid var(--line); background: var(--lo); font: 600 13px/1 var(--f-mono); color: var(--dim); }
+  border: 2px solid var(--line); background: var(--lo); font: 600 16px/1 var(--f-mono); color: var(--dim); }
 .pip.now { border-color: var(--flood); color: var(--flood); animation: blink 1s steps(1) infinite; }
 .pip.done { border: 2px solid var(--edge); animation: pop .4s steps(4) both; box-shadow: inset -3px -3px 0 rgba(0,0,0,.28), inset 3px 3px 0 rgba(255,255,255,.35); }
 .streak { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 2px solid var(--line); background: var(--lo); font: 500 13px/1 var(--f-mono); color: var(--dim); white-space: nowrap; }
 .streak svg { width: 14px; height: 14px; fill: var(--dim); }
-.streak b { font-size: 17px; color: var(--chalk); font-weight: 700; }
+.streak b { font-size: 21px; color: var(--chalk); font-weight: 700; }
 .streak.risk { border-color: var(--flood-lo); }
 .streak.risk svg { fill: var(--flood); animation: blink 1.2s steps(1) infinite; }
 .streak.hot { border-color: var(--ember); background: #3a1a12; }
@@ -90,7 +90,7 @@ body {
   background: repeating-linear-gradient(90deg, var(--grass) 0 8px, #3e8948 8px 10px); }
 .roar .word { font: 600 13px/1 var(--f-mono); color: var(--chalk); }
 .pts-box { text-align: right; }
-.pts-box .num { display: block; margin-top: 4px; font: 700 28px/1 var(--f-mono); color: var(--flood); background: #000; padding: 5px 10px 4px;
+.pts-box .num { display: block; margin-top: 4px; font: 700 36px/1 var(--f-mono); color: var(--flood); background: #000; padding: 6px 10px 4px;
   border: 2px solid var(--edge); box-shadow: inset 0 0 0 2px #2a1f00; font-variant-numeric: tabular-nums; min-width: 3ch; }
 .icon-btn { width: 38px; height: 38px; flex: none; display: grid; place-items: center; padding: 0; border: 2px solid var(--edge); background: var(--panel-2);
   box-shadow: inset 0 3px 0 var(--hi), inset 0 -3px 0 var(--lo); color: var(--chalk); cursor: pointer; }
@@ -175,12 +175,12 @@ details.how[open] summary { margin-bottom: 8px; }
 .q-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .q-meta { display: grid; gap: 8px; justify-items: start; min-width: 0; }
 .topic { font: 600 14px/1 var(--f-body); padding: 5px 10px 6px; background: var(--flood); color: var(--flood-ink); box-shadow: 0 0 0 2px var(--edge); text-transform: uppercase; letter-spacing: .04em; }
-.ring { position: relative; width: 58px; height: 58px; flex: none; display: grid; place-items: center; background: #000; box-shadow: 0 0 0 3px var(--edge); }
+.ring { position: relative; width: 66px; height: 66px; flex: none; display: grid; place-items: center; background: #000; box-shadow: 0 0 0 3px var(--edge); }
 .ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .ring rect { fill: none; stroke-width: 6; shape-rendering: crispEdges; }
 .ring .rb { stroke: #24233f; }
 .ring .rf { stroke: var(--grass); stroke-linecap: butt; stroke-dasharray: 119.4; transition: stroke-dashoffset .12s linear; }
-.ring b { position: relative; font: 700 22px/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--grass); }
+.ring b { position: relative; font: 700 25px/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--grass); }
 .ring.low { animation: blink .5s steps(1) infinite; }
 .ring.low .rf { stroke: var(--red); }
 .ring.low b { color: var(--red); }
@@ -330,12 +330,12 @@ details.ans[open] .why, details.ans[open] .alist { animation: drop .2s steps(3) 
   .brand-sub { font-size: 11px; margin-top: 2px; }
   .roar { display: none; }
   .score .lbl { display: none; }
-  .pts-box .num { font-size: 20px; padding: 4px 7px 3px; margin: 0; }
+  .pts-box .num { font-size: 26px; padding: 5px 7px 3px; margin: 0; }
   .icon-btn { width: 32px; height: 32px; }
-  .pip { width: 22px; height: 22px; font-size: 11px; }
+  .pip { width: 22px; height: 22px; font-size: 14px; }
   .streak { padding: 4px 7px; }
   .streak span { display: none; }
-  .streak b { font-size: 14px; }
+  .streak b { font-size: 17px; }
   .panel { padding: 20px 14px 16px; max-width: 100%; box-sizing: border-box; gap: 12px; }
   .btn.big { font-size: 22px; padding: 13px 22px 15px; }
   .btn { font-size: 18px; padding: 11px 16px 13px; }
@@ -343,7 +343,7 @@ details.ans[open] .why, details.ans[open] .alist { animation: drop .2s steps(3) 
   .muted { font-size: 13px; }
   .eyebrow { font-size: 13px; }
   .ring { width: 50px; height: 50px; }
-  .ring b { font-size: 19px; }
+  .ring b { font-size: 23px; }
   .answer-row input { font-size: 18px; padding: 11px 12px; }
   .ladder li { font-size: 14px; padding: 6px 8px; gap: 9px; }
   .ladder .th { font-size: 12px; }
@@ -724,7 +724,7 @@ const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 };
-const DAY_KEY = "topbins:v6:day:" + dayNo, STATS_KEY = "topbins:v3:stats";
+const DAY_KEY = "topbins:v7:day:" + dayNo, STATS_KEY = "topbins:v3:stats";
 
 // ================= Career: streak, rank, badges =================
 const RANKS = [[0, "Sunday League"], [500, "Non-League"], [1500, "League Two"], [3000, "League One"], [5000, "Championship"], [8000, "Premier League"], [12000, "Champions League"], [18000, "World Class"], [26000, "Ballon d'Or"]];
